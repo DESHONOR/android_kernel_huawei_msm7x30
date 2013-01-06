@@ -141,6 +141,7 @@ static struct platform_device ion_dev;
 #define PMIC_GPIO_FLASH_BOOST_ENABLE	15	/* PMIC GPIO Number 16 */
 
 #define PMIC_GPIO_WLAN_EXT_POR  22 /* PMIC GPIO NUMBER 23 */
+#define PMIC_GPIO_LCD_PWM	24 /* PMIC GPIO Number 25 */
 
 #define	PM_FLIP_MPP 5 /* PMIC MPP 06 */
 
@@ -2786,6 +2787,8 @@ static struct resource msm_v4l2_video_overlay_resources[] = {
 
 static int msm_fb_detect_panel(const char *name)
 {
+	if (!strcmp(name, "mddi_nt35582_wvga"))
+		return 0;
 	return -ENODEV;
 }
 
@@ -2970,6 +2973,40 @@ static struct platform_device qcedev_device = {
 	},
 };
 #endif
+
+static void mddi_nt35582_wvga_pwm_config(void)
+{
+	int err = 0;
+	struct pm8xxx_gpio_init_info lcd_pwm = {
+		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_LCD_PWM),
+		{
+			.direction	= PM_GPIO_DIR_OUT,
+			.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
+			.output_value	= 0,
+			.pull		= PM_GPIO_PULL_NO,
+			.vin_sel	= PM8058_GPIO_VIN_S3,
+			.out_strength	= PM_GPIO_STRENGTH_HIGH,
+			.function	= PM_GPIO_FUNC_2,
+		},
+	};
+
+	err = pm8xxx_gpio_config(lcd_pwm.gpio, &lcd_pwm.config);
+	if (err)
+		pr_err("%s PMIC_GPIO_LCD_PWM config failed\n", __func__);
+}
+
+static struct mddi_panel_platform_data mddi_nt35582_wvga_pdata = {
+	.pwm_channel = 1, /* LPG PMIC GPIO24 */
+	.pwm_config = mddi_nt35582_wvga_pwm_config,
+};
+
+static struct platform_device mddi_nt35582_wvga_device = {
+	.name	= "mddi_nt35582_wvga",
+	.id	= 0,
+	.dev	= {
+		.platform_data = &mddi_nt35582_wvga_pdata,
+	},
+};
 
 static int display_power(int on)
 {
@@ -3678,6 +3715,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_v4l2_video_overlay_device,
 #endif
 	&msm_migrate_pages_device,
+	&mddi_nt35582_wvga_device,
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif

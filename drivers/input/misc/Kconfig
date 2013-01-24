@@ -674,4 +674,18 @@ config BMP18X_I2C
          To compile this driver as a module, choose M here: the
          module will be called bmp18x-i2c.
 
+config APS_12D
+        tristate "Everlight APS-12D ambient light and proximity Sensor"
+        depends on I2C
+        default n
+        help
+          This driver provides support for the APS-12D-1-02 chip which includes
+          ambient light and proximity sensor.
+
+          Say Y here if you have Everlight's APS-12D light & proximity sensor
+          hooked to an I2C bus.
+
+          To compile this driver as a module, choose M here: the
+          module will be called aps_12d.
+
 endif

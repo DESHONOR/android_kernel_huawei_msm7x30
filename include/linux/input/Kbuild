@@ -1,1 +1,2 @@
 header-y += aps-12d.h
+header-y += lsm303dlh.h

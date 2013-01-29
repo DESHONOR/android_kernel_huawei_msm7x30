@@ -64,3 +64,4 @@ obj-$(CONFIG_STM_LIS3DH)		+= lis3dh_acc.o
 obj-$(CONFIG_BMP18X)			+= bmp18x-core.o
 obj-$(CONFIG_BMP18X_I2C)		+= bmp18x-i2c.o
 obj-$(CONFIG_APS_12D)                   += aps-12d.o
+obj-$(CONFIG_INPUT_LSM303DLH)           += lsm303dlh_acc.o lsm303dlh_mag.o

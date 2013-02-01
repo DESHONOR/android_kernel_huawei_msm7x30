@@ -558,7 +558,7 @@ static int lsm303dlh_acc_input_init(struct lsm303dlh_acc_data *acc)
 	input_set_abs_params(acc->input_dev, ABS_Y, -G_MAX, G_MAX, FUZZ, FLAT);
 	input_set_abs_params(acc->input_dev, ABS_Z, -G_MAX, G_MAX, FUZZ, FLAT);
 
-	acc->input_dev->name = "accelerometer";
+	acc->input_dev->name = NAME;
 
 	err = input_register_device(acc->input_dev);
 	if (err) {

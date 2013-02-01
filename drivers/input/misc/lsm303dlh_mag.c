@@ -601,7 +601,7 @@ static int lsm303dlh_mag_input_init(struct lsm303dlh_mag_data *mag)
 	input_set_abs_params(mag->input_dev, ABS_Y, -H_MAX, H_MAX, FUZZ, FLAT);
 	input_set_abs_params(mag->input_dev, ABS_Z, -H_MAX, H_MAX, FUZZ, FLAT);
 
-	mag->input_dev->name = "magnetometer";
+	mag->input_dev->name = NAME;
 
 	err = input_register_device(mag->input_dev);
 	if (err) {

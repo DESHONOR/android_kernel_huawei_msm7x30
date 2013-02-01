@@ -93,6 +93,9 @@
 #if defined(CONFIG_APS_12D)
 #include <linux/input/aps-12d.h>
 #endif
+#if defined(CONFIG_INPUT_LSM303DLH)
+#include <linux/input/lsm303dlh.h>
+#endif
 
 
 #define MSM_PMEM_SF_SIZE	0x1700000
@@ -2390,11 +2393,45 @@ static struct aps_12d_platform_data aps_12d_pdata = {
 };
 #endif
 
+#ifdef CONFIG_INPUT_LSM303DLH
+static struct lsm303dlh_acc_platform_data lsm303dlh_acc_pdata ={
+	.min_interval = 1,
+	.g_range = LSM303DLH_G_2G,
+	.axis_map_x = 1,
+	.axis_map_y = 0,
+	.axis_map_z = 2,
+	.negate_x = 0,
+	.negate_y = 1,
+	.negate_z = 0,
+};
+
+static struct lsm303dlh_mag_platform_data lsm303dlh_mag_pdata ={
+	.min_interval = 14,
+	.h_range = LSM303DLH_H_5_6G,
+	.axis_map_x = 1,
+	.axis_map_y = 0,
+	.axis_map_z = 2,
+	.negate_x = 0,
+	.negate_y = 1,
+	.negate_z = 0,
+};
+#endif
+
 static struct i2c_board_info msm_i2c_board_info[] = {
 	#ifdef CONFIG_APS_12D
 	{
 		I2C_BOARD_INFO("aps-12d", 0x88 >> 1),
 		.platform_data = &aps_12d_pdata,
+	},
+	#endif
+	#ifdef CONFIG_INPUT_LSM303DLH
+	{
+		I2C_BOARD_INFO("lsm303dlh_acc", 0x32 >> 1),
+		.platform_data = &lsm303dlh_acc_pdata,
+	},
+	{
+		I2C_BOARD_INFO("lsm303dlh_mag", 0x3C >> 1),
+		.platform_data = &lsm303dlh_mag_pdata,
 	},
 	#endif
 };

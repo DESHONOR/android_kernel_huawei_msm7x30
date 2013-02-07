@@ -30,8 +30,6 @@
 #include "devices.h"
 #include "footswitch.h"
 
-#include <asm/mach/flash.h>
-
 #include <asm/mach/mmc.h>
 #include <mach/msm_hsusb.h>
 #ifdef CONFIG_PMIC8058
@@ -586,50 +584,6 @@ struct platform_device asoc_mvs_dai1 = {
 };
 #endif
 
-#define MSM_NAND_PHYS		0xA0200000
-#define MSM_NANDC01_PHYS	0xA0240000
-#define MSM_NANDC10_PHYS	0xA0280000
-#define MSM_NANDC11_PHYS	0xA02C0000
-#define EBI2_REG_BASE		0xA0000000
-static struct resource resources_nand[] = {
-	[0] = {
-		.name   = "msm_nand_dmac",
-		.start	= DMOV_NAND_CHAN,
-		.end	= DMOV_NAND_CHAN,
-		.flags	= IORESOURCE_DMA,
-	},
-	[1] = {
-		.name   = "msm_nand_phys",
-		.start  = MSM_NAND_PHYS,
-		.end    = MSM_NAND_PHYS + 0x7FF,
-		.flags  = IORESOURCE_MEM,
-	},
-	[2] = {
-		.name   = "msm_nandc01_phys",
-		.start  = MSM_NANDC01_PHYS,
-		.end    = MSM_NANDC01_PHYS + 0x7FF,
-		.flags  = IORESOURCE_MEM,
-	},
-	[3] = {
-		.name   = "msm_nandc10_phys",
-		.start  = MSM_NANDC10_PHYS,
-		.end    = MSM_NANDC10_PHYS + 0x7FF,
-		.flags  = IORESOURCE_MEM,
-	},
-	[4] = {
-		.name   = "msm_nandc11_phys",
-		.start  = MSM_NANDC11_PHYS,
-		.end    = MSM_NANDC11_PHYS + 0x7FF,
-		.flags  = IORESOURCE_MEM,
-	},
-	[5] = {
-		.name   = "ebi2_reg_base",
-		.start  = EBI2_REG_BASE,
-		.end    = EBI2_REG_BASE + 0x60,
-		.flags  = IORESOURCE_MEM,
-	},
-};
-
 static struct resource resources_otg[] = {
 	{
 		.start	= MSM_HSUSB_PHYS,
@@ -656,20 +610,6 @@ struct platform_device msm_device_otg = {
 	.resource	= resources_otg,
 	.dev		= {
 		.coherent_dma_mask	= 0xffffffffULL,
-	},
-};
-
-struct flash_platform_data msm_nand_data = {
-	.version = VERSION_2,
-};
-
-struct platform_device msm_device_nand = {
-	.name		= "msm_nand",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(resources_nand),
-	.resource	= resources_nand,
-	.dev		= {
-		.platform_data	= &msm_nand_data,
 	},
 };
 

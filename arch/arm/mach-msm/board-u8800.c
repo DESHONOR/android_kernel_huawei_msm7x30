@@ -4813,8 +4813,71 @@ static struct msm_spm_platform_data msm_spm_data __initdata = {
 	.vctl_timeout_us = 50,
 };
 
+#if defined(CONFIG_INPUT_TOUCHSCREEN)
 #define TS_GPIO_IRQ		148
 #define TS_GPIO_RESET	85
+
+#define MAX_LEN		100
+
+static ssize_t u8800_virtual_keys_register(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	char *virtual_keys =
+		__stringify(EV_KEY) ":" __stringify(KEY_BACK)     ":67:862:50:50\n"
+		__stringify(EV_KEY) ":" __stringify(KEY_MENU)     ":199:862:50:50\n"
+		__stringify(EV_KEY) ":" __stringify(KEY_HOMEPAGE) ":304:862:50:50\n"
+		__stringify(EV_KEY) ":" __stringify(KEY_SEARCH)   ":413:862:50:50\n";
+
+	return snprintf(buf, strnlen(virtual_keys, MAX_LEN) + 1 , "%s",
+			virtual_keys);
+}
+
+static struct kobj_attribute atmel_mxt_ts_virtual_keys_attr = {
+	.attr = {
+		.name = "virtualkeys.atmel_mxt_ts",
+		.mode = S_IRUGO,
+	},
+	.show = &u8800_virtual_keys_register,
+};
+
+static struct kobj_attribute synaptics_virtual_keys_attr = {
+	.attr = {
+		.name = "virtualkeys.sensor00fn11",
+		.mode = S_IRUGO,
+	},
+	.show = &u8800_virtual_keys_register,
+};
+
+static struct attribute *virtual_key_properties_attrs[] = {
+	&atmel_mxt_ts_virtual_keys_attr.attr,
+	&synaptics_virtual_keys_attr.attr,
+	NULL
+};
+
+static struct attribute_group virtual_key_properties_attr_group = {
+	.attrs = virtual_key_properties_attrs,
+};
+
+static int virtual_key_setup(void)
+{
+	int ret = 0;
+	static struct kobject *virtual_key_properties_kobj;
+
+	/* Already registered. */
+	if (virtual_key_properties_kobj)
+		return ret;
+
+	virtual_key_properties_kobj =
+		kobject_create_and_add("board_properties", NULL);
+
+	if (virtual_key_properties_kobj)
+		ret = sysfs_create_group(virtual_key_properties_kobj,
+			&virtual_key_properties_attr_group);
+	if (!virtual_key_properties_kobj || ret)
+		pr_err("%s: failed to create u8800 board_properties\n", __func__);
+
+	return ret;
+}
 
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
 static const u8 mxt224_config_data[] = {
@@ -5020,10 +5083,12 @@ static int __init i2c_touch_init(void)
 #endif
 	}
 
+	virtual_key_setup();
 
 	return ret;
 }
 fs_initcall_sync(i2c_touch_init);
+#endif /* CONFIG_INPUT_TOUCHSCREEN */
 
 static void __init msm7x30_init(void)
 {

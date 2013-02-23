@@ -87,6 +87,9 @@
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
 #include <linux/i2c/atmel_mxt_ts.h>
 #endif
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C)
+#include <linux/input/rmi_i2c.h>
+#endif
 #if defined(CONFIG_APS_12D)
 #include <linux/input/aps-12d.h>
 #endif
@@ -4905,21 +4908,122 @@ static struct mxt_platform_data mxt_platform_data = {
 	.lpm_on				= mxt_lpm_on,
 };
 
-static struct i2c_board_info atmel_mxt_ts[] = {
-	{
-		I2C_BOARD_INFO("atmel_mxt_ts", 0x4a),
-		.platform_data = &mxt_platform_data,
-		.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
-	},
+static struct i2c_board_info atmel_mxt_ts = {
+	I2C_BOARD_INFO("atmel_mxt_ts", 0x4a),
+	.platform_data = &mxt_platform_data,
+	.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
 };
 #endif
 
-static void __init touch_init(void)
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C)
+static struct rmi_f11_functiondata synaptics_f11_data = {
+	.button_height = 182,
+};
+
+static struct rmi_functiondata synaptics_functiondata[] = {
+	{
+		.function_index = RMI_F11_INDEX,
+		.data = &synaptics_f11_data,
+	},
+};
+
+static struct rmi_functiondata_list synaptics_perfunctiondata = {
+	.count = ARRAY_SIZE(synaptics_functiondata),
+	.functiondata = synaptics_functiondata,
+};
+
+static int synaptics_ts_setup(void)
 {
-#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
-	i2c_register_board_info(0, atmel_mxt_ts, ARRAY_SIZE(atmel_mxt_ts));
-#endif
+	int ret = 0;
+
+	ret = gpio_request(TS_GPIO_IRQ, "rmi4_attn");
+	if (ret) {
+		pr_err("%s:Failed to obtain synaptics GPIO %d. Code: %d.",
+			__func__, TS_GPIO_IRQ, ret);
+		return ret;
+	}
+	ret = gpio_direction_input(TS_GPIO_IRQ);
+	if (ret) {
+		pr_err("%s:Failed to set direction for synaptics GPIO %d. Code: %d.",
+			__func__, TS_GPIO_IRQ, ret);
+		return ret;
+	}
+
+	ret = gpio_request(TS_GPIO_RESET, "rmi4_reset");
+	if (ret) {
+		pr_err("%s:Failed to obtain synaptics GPIO %d. Code: %d.",
+			__func__, TS_GPIO_RESET, ret);
+		return ret;
+	}
+	ret = gpio_direction_output(TS_GPIO_RESET, 0);
+	if (ret) {
+		pr_err("%s:Failed to set value for synaptics GPIO %d. Code: %d.",
+			__func__, TS_GPIO_RESET, ret);
+		return ret;
+	}
+	msleep(10);
+	ret = gpio_direction_output(TS_GPIO_RESET, 1);
+	if (ret) {
+		pr_err("%s:Failed to set value for synaptics GPIO %d. Code: %d.",
+			__func__, TS_GPIO_RESET, ret);
+		return ret;
+	}
+	msleep(50);
+
+	return ret;
 }
+
+static struct rmi_sensordata synaptics_sensordata = {
+	.perfunctiondata = &synaptics_perfunctiondata,
+	.rmi_sensor_setup = synaptics_ts_setup,
+};
+
+static struct rmi_i2c_platformdata synaptics_platform_data = {
+	.i2c_address = 0x70,
+	.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
+	.irq_type = IORESOURCE_IRQ_LOWLEVEL,
+	.sensordata = &synaptics_sensordata,
+};
+
+static struct i2c_board_info synaptics_i2c_ts = {
+	I2C_BOARD_INFO("rmi4_ts", 0x70),
+	.platform_data = &synaptics_platform_data,
+	.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
+};
+#endif
+
+static int __init i2c_touch_init(void)
+{
+	int ret;
+	struct i2c_adapter *touch_i2c_adapter;
+	union i2c_smbus_data data;
+	u8 value;
+
+	touch_i2c_adapter = i2c_get_adapter(0);
+
+	ret = i2c_smbus_xfer(touch_i2c_adapter, 0x4a, 0, I2C_SMBUS_READ, 0x00,
+		I2C_SMBUS_BYTE_DATA, &data);
+
+	if (!ret)
+	{
+		value = data.byte;
+		pr_debug("%s: Found Atmel mXT224\n", __func__);
+#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
+		i2c_new_device(touch_i2c_adapter, &atmel_mxt_ts);
+#endif
+	}
+	else
+	{
+		pr_debug("%s: Found Synaptics\n", __func__);
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C)
+		i2c_new_device(touch_i2c_adapter, &synaptics_i2c_ts);
+#endif
+	}
+
+
+	return ret;
+}
+fs_initcall_sync(i2c_touch_init);
 
 static void __init msm7x30_init(void)
 {
@@ -5030,8 +5134,6 @@ static void __init msm7x30_init(void)
 			pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
 				__func__, usb_hub_gpio_cfg_value, rc);
 	}
-
-	touch_init();
 
 	boot_reason = *(unsigned int *)
 		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));

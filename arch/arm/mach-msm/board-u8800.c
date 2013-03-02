@@ -342,11 +342,43 @@ static struct pm8xxx_mpp_platform_data pm8xxx_mpp_pdata = {
 	.mpp_base	= PM8058_MPP_PM_TO_SYS(0),
 };
 
+#define PM8XXX_LED_PWM_PERIOD	1000
+#define PM8XXX_LED_PWM_DUTY_MS	20
+
+static struct led_info pm8xxx_led_info[] = {
+	[0] = {
+		.name = "button-backlight",
+	},
+};
+
+static struct led_platform_data pm8xxx_led_core_pdata = {
+	.num_leds = ARRAY_SIZE(pm8xxx_led_info),
+	.leds = pm8xxx_led_info,
+};
+
+static struct pm8xxx_led_config pm8xxx_led_configs[] = {
+	[0] = {
+		.id = PM8XXX_ID_LED_KB_LIGHT,
+		.mode = PM8XXX_LED_MODE_PWM1,
+		.max_current = 150, /* 10 <= I <= 150 */
+		.pwm_channel = 3,
+		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
+	},
+};
+
+
+static struct pm8xxx_led_platform_data pm8xxx_leds_pdata = {
+	.led_core = &pm8xxx_led_core_pdata,
+	.configs = pm8xxx_led_configs,
+	.num_configs = ARRAY_SIZE(pm8xxx_led_configs),
+};
+
 static struct pm8058_platform_data pm8058_7x30_data = {
 	.irq_pdata		= &pm8xxx_irq_pdata,
 	.gpio_pdata		= &pm8xxx_gpio_pdata,
 	.mpp_pdata		= &pm8xxx_mpp_pdata,
 	.keypad_pdata	= &pm8xxx_keypad_pdata,
+	.leds_pdata		= &pm8xxx_leds_pdata,
 };
 
 #ifdef CONFIG_MSM_SSBI

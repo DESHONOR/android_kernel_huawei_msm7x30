@@ -5085,7 +5085,7 @@ static int __init i2c_touch_init(void)
 
 	virtual_key_setup();
 
-	return ret;
+	return 0;
 }
 fs_initcall_sync(i2c_touch_init);
 #endif /* CONFIG_INPUT_TOUCHSCREEN */

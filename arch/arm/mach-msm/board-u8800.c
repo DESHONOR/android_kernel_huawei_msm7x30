@@ -3398,6 +3398,7 @@ static void __init bt_power_init(void)
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
 	.voltage_min_design 	= 3400,
 	.voltage_max_design	= 4200,
+	.voltage_fail_safe      = 3512,
 	.avail_chg_sources   	= AC_CHG | USB_CHG ,
 	.batt_technology        = POWER_SUPPLY_TECHNOLOGY_LION,
 };

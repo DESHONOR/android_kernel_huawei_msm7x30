@@ -314,12 +314,19 @@ static struct pm8xxx_led_platform_data pm8xxx_leds_pdata = {
 	.num_configs = ARRAY_SIZE(pm8xxx_led_configs),
 };
 
+static struct pm8xxx_vibrator_platform_data pm8xxx_vibrator_pdata = {
+	.initial_vibrate_ms = 0,
+	.level_mV = 3000,
+	.max_timeout_ms = 15000,
+};
+
 static struct pm8058_platform_data pm8058_7x30_data = {
 	.irq_pdata		= &pm8xxx_irq_pdata,
 	.gpio_pdata		= &pm8xxx_gpio_pdata,
 	.mpp_pdata		= &pm8xxx_mpp_pdata,
 	.keypad_pdata	= &pm8xxx_keypad_pdata,
 	.leds_pdata		= &pm8xxx_leds_pdata,
+	.vibrator_pdata = &pm8xxx_vibrator_pdata,
 };
 
 #ifdef CONFIG_MSM_SSBI

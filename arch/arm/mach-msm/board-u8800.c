@@ -4469,14 +4469,6 @@ out1:
 	if (mmc_regulator_init(2, "s3", 1800000))
 		goto out2;
 
-	if (machine_is_msm8x55_svlte_surf())
-		msm7x30_sdc2_data.msmsdcc_fmax =  24576000;
-	if (machine_is_msm8x55_svlte_surf() ||
-			machine_is_msm8x55_svlte_ffa()) {
-		msm7x30_sdc2_data.sdiowakeup_irq = MSM_GPIO_TO_INT(68);
-		msm7x30_sdc2_data.is_sdio_al_client = 1;
-	}
-
 	msm_add_sdcc(2, &msm7x30_sdc2_data);
 out2:
 #endif

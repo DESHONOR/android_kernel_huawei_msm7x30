@@ -998,9 +998,6 @@ static struct platform_device msm_gemini_device = {
 static uint32_t audio_pamp_gpio_config =
    GPIO_CFG(82, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
 
-static uint32_t audio_fluid_icodec_tx_config =
-  GPIO_CFG(85, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
-
 static int __init snddev_poweramp_gpio_init(void)
 {
 	int rc;
@@ -1017,37 +1014,12 @@ static int __init snddev_poweramp_gpio_init(void)
 
 void msm_snddev_tx_route_config(void)
 {
-	int rc;
-
 	pr_debug("%s()\n", __func__);
-
-	if (machine_is_msm7x30_fluid()) {
-		rc = gpio_tlmm_config(audio_fluid_icodec_tx_config,
-		GPIO_CFG_ENABLE);
-		if (rc) {
-			printk(KERN_ERR
-				"%s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, audio_fluid_icodec_tx_config, rc);
-		} else
-			gpio_set_value(85, 0);
-	}
 }
 
 void msm_snddev_tx_route_deconfig(void)
 {
-	int rc;
-
 	pr_debug("%s()\n", __func__);
-
-	if (machine_is_msm7x30_fluid()) {
-		rc = gpio_tlmm_config(audio_fluid_icodec_tx_config,
-		GPIO_CFG_DISABLE);
-		if (rc) {
-			printk(KERN_ERR
-				"%s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, audio_fluid_icodec_tx_config, rc);
-		}
-	}
 }
 
 void msm_snddev_poweramp_on(void)

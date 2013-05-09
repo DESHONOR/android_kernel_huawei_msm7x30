@@ -25,6 +25,7 @@
 #include <linux/mfd/pmic8058.h>
 #include <linux/mfd/marimba.h>
 #include <linux/i2c.h>
+#include <linux/i2c-gpio.h>
 #include <linux/input.h>
 #include <linux/power_supply.h>
 #include <linux/msm_adc.h>
@@ -3203,6 +3204,20 @@ static struct platform_device msm_batt_device = {
 	.dev.platform_data  = &msm_psy_batt_data,
 };
 
+static struct i2c_gpio_platform_data i2c_dcdc_pdata = {
+	.scl_pin = 149,
+	.sda_pin = 150,
+	.sda_is_open_drain = 1,
+	.scl_is_open_drain = 1,
+	.udelay = 2,
+};
+
+static struct platform_device i2c_dcdc_device = {
+	.id = 5,
+	.name = "i2c-gpio",
+	.dev.platform_data = &i2c_dcdc_pdata,
+};
+
 static char *msm_adc_device_names[] = {
 	"XO_ADC",
 };
@@ -3310,6 +3325,7 @@ static struct platform_device *devices[] __initdata = {
 	&android_pmem_audio_device,
 	&msm_device_i2c,
 	&msm_device_i2c_2,
+	&i2c_dcdc_device,
 	&msm_device_uart_dm1,
 	&hs_device,
 #ifdef CONFIG_MSM7KV2_AUDIO

@@ -44,6 +44,33 @@ static struct msm_gpiomux_config msm7x30_ts_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting i2c_scl_dcdc_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting i2c_sda_dcdc_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm7x30_i2c_dcdc_configs[] __initdata = {
+	{	/* I2C_SCL_DCDC */
+		.gpio = 149,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &i2c_scl_dcdc_act_cfg,
+		},
+	},
+	{	/* I2C_SDA_DCDC */
+		.gpio = 150,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &i2c_sda_dcdc_act_cfg,
+		},
+	},
+};
+
 int __init msm7x30_init_gpiomux(void)
 {
 	int rc = msm_gpiomux_init(NR_GPIO_IRQS);
@@ -54,6 +81,9 @@ int __init msm7x30_init_gpiomux(void)
 
 	msm_gpiomux_install(msm7x30_ts_configs,
 			ARRAY_SIZE(msm7x30_ts_configs));
+
+	msm_gpiomux_install(msm7x30_i2c_dcdc_configs,
+			ARRAY_SIZE(msm7x30_i2c_dcdc_configs));
 
 	return rc;
 }

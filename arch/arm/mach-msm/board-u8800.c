@@ -2321,6 +2321,9 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.ldo_enable		 = msm_hsusb_ldo_enable,
 	.ldo_init		 = msm_hsusb_ldo_init,
 	.ldo_set_voltage	 = msm_hsusb_ldo_set_voltage,
+#ifdef CONFIG_USB_MSM_OTG_72K_MODE_SWITCH
+	.usb_mode		 = USB_PERIPHERAL_MODE,
+#endif
 };
 
 #ifdef CONFIG_USB_GADGET

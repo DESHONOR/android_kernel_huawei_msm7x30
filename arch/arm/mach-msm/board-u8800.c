@@ -53,6 +53,7 @@
 #include <mach/qdsp5v2/mi2s.h>
 #include <mach/qdsp5v2/audio_dev_ctl.h>
 #include <mach/msm_battery.h>
+#include <linux/power/bq2415x_charger.h>
 #include <mach/rpc_server_handset.h>
 #include <mach/msm_tsif.h>
 #include <mach/socinfo.h>
@@ -2172,46 +2173,33 @@ static void __init msm_qsd_spi_init(void)
 	qsd_device_spi.dev.platform_data = &qsd_spi_pdata;
 }
 
+static void (*bq24152_hook)(enum bq2415x_mode mode, void *data);
+static void *bq24152_data;
+
 #ifdef CONFIG_USB_EHCI_MSM_72K
 static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 {
-        int rc;
-        static int vbus_is_on;
-	struct pm8xxx_gpio_init_info usb_vbus = {
-		PM8058_GPIO_PM_TO_SYS(36),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.pull           = PM_GPIO_PULL_NO,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 1,
-			.vin_sel        = 2,
-			.out_strength   = PM_GPIO_STRENGTH_MED,
-			.function       = PM_GPIO_FUNC_NORMAL,
-			.inv_int_pol    = 0,
-		},
-	};
+	static int vbus_is_on;
 
-        /* If VBUS is already on (or off), do nothing. */
-        if (unlikely(on == vbus_is_on))
-                return;
+	/* If VBUS is already on (or off), do nothing. */
+	if (unlikely(on == vbus_is_on))
+		return;
 
-        if (on) {
-		rc = pm8xxx_gpio_config(usb_vbus.gpio, &usb_vbus.config);
-		if (rc) {
-                        pr_err("%s PMIC GPIO 36 write failed\n", __func__);
-                        return;
-                }
-	} else {
-		gpio_set_value_cansleep(PM8058_GPIO_PM_TO_SYS(36), 0);
+	if (bq24152_hook != NULL && bq24152_data != NULL)
+	{
+		if (on)
+			bq24152_hook(BQ2415X_MODE_BOOST, bq24152_data);
+		else
+			bq24152_hook(BQ2415X_MODE_OFF, bq24152_data);
 	}
 
-        vbus_is_on = on;
+	vbus_is_on = on;
 }
 
 static struct msm_usb_host_platform_data msm_usb_host_pdata = {
         .phy_info   = (USB_PHY_INTEGRATED | USB_PHY_MODEL_45NM),
         .vbus_power = msm_hsusb_vbus_power,
-        .power_budget   = 180,
+        .power_budget   = 200,
 };
 #endif
 
@@ -2287,6 +2275,33 @@ static int msm_hsusb_ldo_set_voltage(int mV)
 }
 #endif
 
+static void msm_hsusb_chg_connected(enum chg_type chg_type)
+{
+	static int chg_type_set = USB_CHG_TYPE__INVALID;
+
+	/* If chg type is already set to same, do nothing. */
+	if (unlikely(chg_type == chg_type_set))
+		return;
+
+	if (bq24152_hook == NULL || bq24152_data == NULL)
+		return;
+
+	switch (chg_type) {
+	case USB_CHG_TYPE__SDP:
+	case USB_CHG_TYPE__CARKIT:
+		bq24152_hook(BQ2415X_MODE_HOST_CHARGER, bq24152_data);
+		break;
+	case USB_CHG_TYPE__WALLCHARGER:
+		bq24152_hook(BQ2415X_MODE_DEDICATED_CHARGER, bq24152_data);
+		break;
+	case USB_CHG_TYPE__INVALID:
+		bq24152_hook(BQ2415X_MODE_OFF, bq24152_data);
+		break;
+	}
+
+	chg_type_set = chg_type;
+}
+
 #ifndef CONFIG_USB_EHCI_MSM_72K
 static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init);
 #endif
@@ -2302,9 +2317,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.cdr_autoreset		 = CDR_AUTO_RESET_DISABLE,
 	.drv_ampl		 = HS_DRV_AMPLITUDE_DEFAULT,
 	.se1_gating		 = SE1_GATING_DISABLE,
-	.chg_vbus_draw		 = hsusb_chg_vbus_draw,
-	.chg_connected		 = hsusb_chg_connected,
-	.chg_init		 = hsusb_chg_init,
+	.chg_connected		 = msm_hsusb_chg_connected,
 	.ldo_enable		 = msm_hsusb_ldo_enable,
 	.ldo_init		 = msm_hsusb_ldo_init,
 	.ldo_set_voltage	 = msm_hsusb_ldo_set_voltage,
@@ -3216,6 +3229,36 @@ static struct platform_device i2c_dcdc_device = {
 	.id = 5,
 	.name = "i2c-gpio",
 	.dev.platform_data = &i2c_dcdc_pdata,
+};
+
+static void (*bq24152_hook)(enum bq2415x_mode mode, void *data);
+static void *bq24152_data;
+
+int bq24152_set_mode_hook(void (*hook)(enum bq2415x_mode mode, void *data),
+	void *data)
+{
+	bq24152_hook = hook;
+	bq24152_data = data;
+
+	// Return non-zero to indicate automode support.
+	return ~0;
+}
+
+static struct bq2415x_platform_data bq24152_platform_data = {
+	.current_limit = 100, /* mA */
+	.weak_battery_voltage = 3400, /* mV */
+	.battery_regulation_voltage = 4200, /* mV */
+	.charge_current = 950, /* mA */
+	.termination_current = 100, /* mA */
+	.resistor_sense = 68, /* m ohm */
+	.set_mode_hook = &bq24152_set_mode_hook,
+};
+
+static struct i2c_board_info bq24152_device[] = {
+	{
+		I2C_BOARD_INFO("bq24152", 0x6b),
+		.platform_data = &bq24152_platform_data,
+	},
 };
 
 static char *msm_adc_device_names[] = {
@@ -4742,6 +4785,9 @@ static void __init msm7x30_init(void)
 
 	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
 				ARRAY_SIZE(msm_camera_boardinfo));
+
+	i2c_register_board_info(5 /* I2C_DCDC ID */, bq24152_device,
+				ARRAY_SIZE(bq24152_device));
 
 	bt_power_init();
 #ifdef CONFIG_I2C_SSBI

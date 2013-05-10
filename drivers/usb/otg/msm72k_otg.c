@@ -47,9 +47,59 @@ static void msm_otg_set_id_state(int id)
 
 struct msm_otg *the_msm_otg;
 
+#ifdef CONFIG_USB_MSM_OTG_72K_MODE_SWITCH
+static void msm_otg_start_peripheral(struct usb_otg *otg, int on);
+static void msm_otg_start_host(struct usb_otg *otg, int on);
+
+static ssize_t usb_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", the_msm_otg->pdata->usb_mode);
+}
+
+static ssize_t usb_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct msm_otg *otg_dev = the_msm_otg;
+	enum usb_mode new_mode;
+
+	if (sscanf(buf, "%d", (int *)&new_mode) != 1)
+		return -EINVAL;
+
+	/* Stop services before changing USB mode. */
+	msm_otg_start_peripheral(otg_dev->phy.otg, REQUEST_STOP);
+	msm_otg_start_host(otg_dev->phy.otg, REQUEST_STOP);
+
+	switch(new_mode) {
+	case USB_PERIPHERAL_MODE:
+		otg_dev->pdata->usb_mode = USB_PERIPHERAL_MODE;
+		msm_otg_set_id_state(true);
+		break;
+	case USB_HOST_MODE:
+		otg_dev->pdata->usb_mode = USB_HOST_MODE;
+		msm_otg_set_id_state(false);
+		break;
+	default:
+		pr_info("%s: unknown mode specified\n", __func__);
+		return -EINVAL;
+	}
+
+	return count;
+}
+static DEVICE_ATTR(mode, S_IWUSR | S_IRUGO, usb_mode_show, usb_mode_store);
+#endif
+
 static int is_host(void)
 {
 	struct msm_otg *dev = the_msm_otg;
+
+#ifdef CONFIG_USB_MSM_OTG_72K_MODE_SWITCH
+	switch (the_msm_otg->pdata->usb_mode)
+	{
+		case USB_HOST_MODE: return 1;
+		case USB_PERIPHERAL_MODE: return 0;
+	}
+#endif
 
 	if (dev->pdata->otg_mode == OTG_ID)
 		return (OTGSC_ID & readl(USB_OTGSC)) ? 0 : 1;
@@ -1199,9 +1249,6 @@ static void msm_otg_set_id_state(int id)
 {
 	struct msm_otg *dev = the_msm_otg;
 	unsigned long flags;
-
-	if (!atomic_read(&dev->in_lpm))
-		return;
 
 	if (id) {
 		set_bit(ID, &dev->inputs);
@@ -2441,6 +2488,9 @@ static struct attribute *msm_otg_attrs[] = {
 	&dev_attr_pwr_down.attr,
 	&dev_attr_srp_req.attr,
 	&dev_attr_clr_err.attr,
+#ifdef CONFIG_USB_MSM_OTG_72K_MODE_SWITCH
+	&dev_attr_mode.attr,
+#endif
 	NULL,
 };
 

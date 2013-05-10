@@ -86,6 +86,14 @@ config USB_MSM_OTG_72K
 	  required for even peripheral only or host only mode configuration.
 	  Supports SRP and HNP when both gadget and Host are selected.
 
+config USB_MSM_OTG_72K_MODE_SWITCH
+	bool "USB Host/Peripheral switch on sysfs"
+	depends on USB_MSM_OTG_72K
+	default n
+	help
+	  Enables sysfs function to change between host/peripheral at runtime
+	  for devices without automatic OTG functionality.
+
 config MSM_OTG_ENABLE_A_WAIT_BCON_TIMEOUT
 	bool "Enable A-device timeout for B-device connection"
 	depends on USB_MSM_OTG_72K

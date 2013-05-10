@@ -86,8 +86,8 @@ enum otg_mode {
 
 /* used to configure the default mode,if otg_mode is USER_CONTROL */
 enum usb_mode {
-	USB_HOST_MODE,
 	USB_PERIPHERAL_MODE,
+	USB_HOST_MODE,
 };
 
 enum chg_type {

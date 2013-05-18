@@ -2190,7 +2190,7 @@ static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 		if (on)
 			bq24152_hook(BQ2415X_MODE_BOOST, bq24152_data);
 		else
-			bq24152_hook(BQ2415X_MODE_OFF, bq24152_data);
+			bq24152_hook(BQ2415X_MODE_NONE, bq24152_data);
 	}
 
 	vbus_is_on = on;
@@ -2295,7 +2295,7 @@ static void msm_hsusb_chg_connected(enum chg_type chg_type)
 		bq24152_hook(BQ2415X_MODE_DEDICATED_CHARGER, bq24152_data);
 		break;
 	case USB_CHG_TYPE__INVALID:
-		bq24152_hook(BQ2415X_MODE_OFF, bq24152_data);
+		bq24152_hook(BQ2415X_MODE_NONE, bq24152_data);
 		break;
 	}
 
@@ -3222,7 +3222,7 @@ static struct i2c_gpio_platform_data i2c_dcdc_pdata = {
 	.sda_pin = 150,
 	.sda_is_open_drain = 1,
 	.scl_is_open_drain = 1,
-	.udelay = 2,
+	.udelay = 50,
 };
 
 static struct platform_device i2c_dcdc_device = {

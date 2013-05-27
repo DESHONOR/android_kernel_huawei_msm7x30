@@ -4537,12 +4537,12 @@ static const u8 mxt224_config_data[] = {
 
 static struct mxt_config_info mxt_config_array[] = {
 	{
-		.config			= mxt224_config_data,
+		.config		= mxt224_config_data,
 		.config_length	= ARRAY_SIZE(mxt224_config_data),
-		.family_id		= 0x80,
-		.variant_id		= 0x01,
-		.version		= 0x16,
-		.build			= 0xAB,
+		.family_id	= 0x80,
+		.variant_id	= 0x01,
+		.version	= 0x16,
+		.build		= 0xAB,
 	},
 };
 
@@ -4567,20 +4567,20 @@ int mxt_lpm_on(bool on)
 static struct mxt_platform_data mxt_platform_data = {
 	.config_array		= mxt_config_array,
 	.config_array_size	= ARRAY_SIZE(mxt_config_array),
-	.panel_minx			= 0,
-	.panel_maxx			= 480,
-	.panel_miny			= 0,
-	.panel_maxy			= 882,
-	.disp_minx			= 0,
-	.disp_maxx			= 480,
-	.disp_miny			= 0,
-	.disp_maxy			= 800,
-	.irqflags			= IRQF_TRIGGER_FALLING,
-	.reset_gpio			= TS_GPIO_RESET,
-	.irq_gpio			= TS_GPIO_IRQ,
-	.init_hw			= mxt_init_hw,
-	.power_on			= mxt_power_on,
-	.lpm_on				= mxt_lpm_on,
+	.panel_minx		= 0,
+	.panel_maxx		= 480,
+	.panel_miny		= 0,
+	.panel_maxy		= 882,
+	.disp_minx		= 0,
+	.disp_maxx		= 480,
+	.disp_miny		= 0,
+	.disp_maxy		= 800,
+	.irqflags		= IRQF_TRIGGER_FALLING,
+	.reset_gpio		= TS_GPIO_RESET,
+	.irq_gpio		= TS_GPIO_IRQ,
+	.init_hw		= mxt_init_hw,
+	.power_on		= mxt_power_on,
+	.lpm_on			= mxt_lpm_on,
 };
 
 static struct i2c_board_info atmel_mxt_ts = {

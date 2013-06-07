@@ -345,6 +345,11 @@ static struct msm_ssbi_platform_data msm7x30_ssbi_pm8058_pdata = {
 #endif
 
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
+#ifdef CONFIG_S5K4E1GX
+	{
+		I2C_BOARD_INFO("s5k4e1gx", 0x30 >> 1),
+	},
+#endif
 };
 
 #ifdef CONFIG_MSM_CAMERA
@@ -426,6 +431,18 @@ static uint32_t camera_on_gpio_table[] = {
 	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 };
 
+#ifdef CONFIG_S5K4E1GX
+static uint32_t camera_off_gpio_s5k4e1gx_table[] = {
+	/* CAMIF_SHDN_OUTS */
+	GPIO_CFG(55, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+};
+
+static uint32_t camera_on_gpio_s5k4e1gx_table[] = {
+	/* CAMIF_SHDN_OUTS */
+	GPIO_CFG(55, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+};
+#endif
+
 static void config_gpio_table(uint32_t *table, int len)
 {
 	int n, rc;
@@ -445,6 +462,11 @@ static int config_camera_on_gpios(void)
 
 	config_gpio_table(camera_on_vcm_gpio_table,
 		ARRAY_SIZE(camera_on_vcm_gpio_table));
+
+#ifdef CONFIG_S5K4E1GX
+	config_gpio_table(camera_on_gpio_s5k4e1gx_table,
+		ARRAY_SIZE(camera_on_gpio_s5k4e1gx_table));
+#endif
 	return 0;
 }
 
@@ -455,6 +477,11 @@ static void config_camera_off_gpios(void)
 
 	config_gpio_table(camera_off_vcm_gpio_table,
 		ARRAY_SIZE(camera_off_vcm_gpio_table));
+
+#ifdef CONFIG_S5K4E1GX
+	config_gpio_table(camera_off_gpio_s5k4e1gx_table,
+		ARRAY_SIZE(camera_off_gpio_s5k4e1gx_table));
+#endif
 }
 
 struct resource msm_camera_resources[] = {
@@ -493,6 +520,38 @@ static struct msm_camera_sensor_flash_src msm_flash_src_pwm = {
 	._fsrc.pwm_src.high_load = 100,
 	._fsrc.pwm_src.channel = 7,
 };
+
+#ifdef CONFIG_S5K4E1GX
+static struct msm_camera_sensor_flash_data flash_s5k4e1gx = {
+	.flash_type = MSM_CAMERA_FLASH_LED,
+	.flash_src  = &msm_flash_src_pwm,
+};
+
+static struct msm_camera_sensor_platform_info sensor_board_info_s5k4e1gx = {
+	.mount_angle = 0,
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
+	.sensor_name		= "s5k4e1gx",
+	.sensor_reset_enable	= 1,
+	.sensor_reset		= 55,
+	.sensor_pwd		= 0,
+	.vcm_pwd		= 56,
+	.vcm_enable		= 1,
+	.pdata			= &msm_camera_device_data,
+	.flash_data		= &flash_s5k4e1gx,
+	.sensor_platform_info	= &sensor_board_info_s5k4e1gx,
+	.resource		= msm_camera_resources,
+	.num_resources		= ARRAY_SIZE(msm_camera_resources),
+};
+
+static struct platform_device msm_camera_sensor_s5k4e1gx = {
+	.name	= "msm_camera_s5k4e1gx",
+	.dev	= {
+		.platform_data = &msm_camera_sensor_s5k4e1gx_data,
+	},
+};
+#endif
 
 #ifdef CONFIG_MSM_VPE
 static struct resource msm_vpe_resources[] = {
@@ -2666,6 +2725,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&msm_kgsl_3d0,
 	&msm_kgsl_2d0,
+#ifdef CONFIG_S5K4E1GX
+	&msm_camera_sensor_s5k4e1gx,
+#endif
 	&msm_device_vidc_720p,
 #ifdef CONFIG_MSM_GEMINI
 	&msm_gemini_device,

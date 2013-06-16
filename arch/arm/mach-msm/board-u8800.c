@@ -1941,7 +1941,7 @@ static struct aps_12d_platform_data aps_12d_pdata = {
 #endif
 
 #ifdef CONFIG_INPUT_LSM303DLH
-static struct lsm303dlh_acc_platform_data lsm303dlh_acc_pdata ={
+static struct lsm303dlh_acc_platform_data lsm303dlh_acc_pdata = {
 	.min_interval = 1,
 	.g_range = LSM303DLH_G_2G,
 	.axis_map_x = 1,
@@ -1952,7 +1952,7 @@ static struct lsm303dlh_acc_platform_data lsm303dlh_acc_pdata ={
 	.negate_z = 0,
 };
 
-static struct lsm303dlh_mag_platform_data lsm303dlh_mag_pdata ={
+static struct lsm303dlh_mag_platform_data lsm303dlh_mag_pdata = {
 	.min_interval = 14,
 	.h_range = LSM303DLH_H_5_6G,
 	.axis_map_x = 1,

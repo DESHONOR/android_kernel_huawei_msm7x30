@@ -17,34 +17,36 @@
 #include <mach/socinfo.h>
 #include "devices.h"
 
-static struct gpiomux_setting ts_int_act_cfg = {
+static struct gpiomux_setting ts_int_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
 };
 
-static struct gpiomux_setting ts_resout_act_cfg = {
+static struct gpiomux_setting ts_resout_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_OUT_HIGH,
 };
 
 static struct msm_gpiomux_config msm7x30_ts_configs[] __initdata = {
 	{	/* TOUCH_INT */
 		.gpio = 148,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &ts_int_act_cfg,
+			[GPIOMUX_SUSPENDED]    = &ts_int_sus_cfg,
 		},
 	},
 	{	/* TOUCH_RESET */
 		.gpio = 85,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &ts_resout_act_cfg,
+			[GPIOMUX_SUSPENDED]    = &ts_resout_sus_cfg,
 		},
 	},
 };
 
-static struct gpiomux_setting i2c_dcdc_act_cfg = {
+static struct gpiomux_setting i2c_dcdc_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_UP,
@@ -54,13 +56,13 @@ static struct msm_gpiomux_config msm7x30_i2c_dcdc_configs[] __initdata = {
 	{	/* I2C_SCL_DCDC */
 		.gpio = 149,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &i2c_dcdc_act_cfg,
+			[GPIOMUX_SUSPENDED]    = &i2c_dcdc_sus_cfg,
 		},
 	},
 	{	/* I2C_SDA_DCDC */
 		.gpio = 150,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &i2c_dcdc_act_cfg,
+			[GPIOMUX_SUSPENDED]    = &i2c_dcdc_sus_cfg,
 		},
 	},
 };

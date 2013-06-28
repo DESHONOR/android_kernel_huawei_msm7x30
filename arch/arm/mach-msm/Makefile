@@ -101,7 +101,11 @@ ifndef CONFIG_ARCH_MSM8960
 ifndef CONFIG_ARCH_MSM8X60
 ifndef CONFIG_ARCH_MSM8974
 	obj-$(CONFIG_MSM_SMD) += pmic.o
+ifdef CONFIG_MACH_HUAWEI_U8800
+	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_pmapp.o
+else
 	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_hsusb.o rpc_pmapp.o rpc_fsusb.o
+endif
 endif
 endif
 endif

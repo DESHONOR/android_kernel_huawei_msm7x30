@@ -3279,7 +3279,7 @@ int bq24152_set_mode_hook(void (*hook)(enum bq2415x_mode mode, void *data),
 	bq24152_hook = hook;
 	bq24152_data = data;
 
-	// Return non-zero to indicate automode support.
+	/* Return non-zero to indicate automode support. */
 	return ~0;
 }
 

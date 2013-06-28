@@ -2340,13 +2340,10 @@ static void msm_hsusb_chg_connected(enum chg_type chg_type)
 	chg_type_set = chg_type;
 }
 
-#ifndef CONFIG_USB_EHCI_MSM_72K
 static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init);
-#endif
 static struct msm_otg_platform_data msm_otg_pdata = {
-#ifndef CONFIG_USB_EHCI_MSM_72K
 	.pmic_vbus_notif_init         = msm_hsusb_pmic_notif_init,
-#else
+#ifdef CONFIG_USB_EHCI_MSM_72K
 	.vbus_power = msm_hsusb_vbus_power,
 #endif
 	.pemp_level		 = PRE_EMPHASIS_WITH_20_PERCENT,
@@ -2367,15 +2364,14 @@ static struct msm_hsusb_gadget_platform_data msm_gadget_pdata = {
 	.is_phy_status_timer_on = 1,
 };
 #endif
-#ifndef CONFIG_USB_EHCI_MSM_72K
-typedef void (*notify_vbus_state) (int);
-notify_vbus_state notify_vbus_state_func_ptr;
-int vbus_on_irq;
+
+static void (*notify_vbus_state_func_ptr)(int online);
+static int vbus_on_irq;
 static irqreturn_t pmic_vbus_on_irq(int irq, void *data)
 {
 	pr_info("%s: vbus notification from pmic\n", __func__);
 
-	(*notify_vbus_state_func_ptr) (1);
+	notify_vbus_state_func_ptr(1);
 
 	return IRQ_HANDLED;
 }
@@ -2410,7 +2406,6 @@ static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init)
 		return 0;
 	}
 }
-#endif
 
 static struct android_pmem_platform_data android_pmem_pdata = {
 	.name = "pmem",

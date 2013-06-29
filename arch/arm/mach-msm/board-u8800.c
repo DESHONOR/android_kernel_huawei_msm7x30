@@ -2650,16 +2650,7 @@ static struct platform_device mddi_nt35582_wvga_device = {
 
 static int display_power(int on)
 {
-	int rc = 0;
-
-	rc = pmapp_display_clock_config(on);
-	if (rc) {
-		pr_err("%s: pmapp_display_clock_config rc=%d\n",
-			__func__, rc);
-		return rc;
-	}
-
-	return rc;
+	return 0;
 }
 
 static int msm_fb_mddi_sel_clk(u32 *clk_rate)

@@ -123,20 +123,18 @@ static struct platform_device ion_dev;
 #define MSM_ION_HEAP_NUM	5
 #endif
 
-#define PMIC_GPIO_INT		27
-#define PMIC_VREG_WLAN_LEVEL	2900
-#define PMIC_GPIO_SD_DET	20 /* PMIC GPIO Number 21 */
-
-#define PMIC_GPIO_SDC4_PWR_EN_N 35  /* PMIC GPIO Number 36 */
-
 /* Macros assume PMIC GPIOs start at 0 */
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio)	(pm_gpio + NR_GPIO_IRQS)
 #define PM8058_GPIO_SYS_TO_PM(sys_gpio)	(sys_gpio - NR_GPIO_IRQS)
 #define PM8058_MPP_BASE			PM8058_GPIO_PM_TO_SYS(PM8058_GPIOS)
 #define PM8058_MPP_PM_TO_SYS(pm_gpio)	(pm_gpio + PM8058_MPP_BASE)
 
-#define PMIC_GPIO_WLAN_EXT_POR  22 /* PMIC GPIO NUMBER 23 */
+#define PMIC_GPIO_INT		27 /* PM_IRQ_APC_N */
+
+#define PMIC_GPIO_SD_DET	20 /* PMIC GPIO Number 21 */
+#define PMIC_GPIO_WLAN_EXT_POR	22 /* PMIC GPIO Number 23 */
 #define PMIC_GPIO_LCD_PWM	24 /* PMIC GPIO Number 25 */
+#define PMIC_GPIO_SDC4_PWR_EN_N	35 /* PMIC GPIO Number 36 */
 
 #define DDR1_BANK_BASE 0X20000000
 #define DDR2_BANK_BASE 0X40000000

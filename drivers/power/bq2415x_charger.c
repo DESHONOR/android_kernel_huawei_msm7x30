@@ -1655,6 +1655,14 @@ static const struct i2c_device_id bq2415x_i2c_id_table[] = {
 };
 MODULE_DEVICE_TABLE(i2c, bq2415x_i2c_id_table);
 
+static void bq2415x_shutdown(struct i2c_client *client)
+{
+	struct bq2415x_device *bq = i2c_get_clientdata(client);
+	bq2415x_reset_chip(bq);
+
+	dev_info(bq->dev, "chip reset\n");
+}
+
 static struct i2c_driver bq2415x_driver = {
 	.driver = {
 		.name = "bq2415x-charger",
@@ -1662,6 +1670,7 @@ static struct i2c_driver bq2415x_driver = {
 	.probe = bq2415x_probe,
 	.remove = bq2415x_remove,
 	.id_table = bq2415x_i2c_id_table,
+	.shutdown = bq2415x_shutdown,
 };
 module_i2c_driver(bq2415x_driver);
 

@@ -2218,6 +2218,7 @@ static void __init msm_qsd_spi_init(void)
 
 static void (*bq24152_hook)(enum bq2415x_mode mode, void *data);
 static void *bq24152_data;
+static bool bq24152_boost_mode = false;
 
 #ifdef CONFIG_USB_EHCI_MSM_72K
 static void msm_hsusb_vbus_power(unsigned phy_info, int on)
@@ -2234,6 +2235,7 @@ static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 			bq24152_hook(BQ2415X_MODE_BOOST, bq24152_data);
 		else
 			bq24152_hook(BQ2415X_MODE_NONE, bq24152_data);
+		bq24152_boost_mode = on;
 	}
 
 	vbus_is_on = on;
@@ -3170,12 +3172,18 @@ static void __init bt_power_init(void)
 #define bt_power_init(x) do {} while (0)
 #endif
 
+static bool msm_psy_batt_is_charger_valid(void)
+{
+	return !bq24152_boost_mode;
+}
+
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
 	.voltage_min_design 	= 3400,
 	.voltage_max_design	= 4200,
 	.voltage_fail_safe	= 3512,
 	.avail_chg_sources	= AC_CHG | USB_CHG ,
 	.batt_technology	= POWER_SUPPLY_TECHNOLOGY_LION,
+	.is_charger_valid	= msm_psy_batt_is_charger_valid,
 };
 
 static struct platform_device msm_batt_device = {

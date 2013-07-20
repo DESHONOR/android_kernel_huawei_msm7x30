@@ -2269,7 +2269,7 @@ static int msm_hsusb_ldo_enable(int enable)
 {
 	static int ldo_status;
 
-	if (!vreg_3p3 || IS_ERR(vreg_3p3))
+	if (IS_ERR_OR_NULL(vreg_3p3))
 		return -ENODEV;
 
 	if (ldo_status == enable)

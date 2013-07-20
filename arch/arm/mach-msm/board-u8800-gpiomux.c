@@ -48,7 +48,7 @@ static struct msm_gpiomux_config msm7x30_ts_configs[] __initdata = {
 
 static struct gpiomux_setting i2c_dcdc_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
+	.drv = GPIOMUX_DRV_4MA,
 	.pull = GPIOMUX_PULL_UP,
 };
 

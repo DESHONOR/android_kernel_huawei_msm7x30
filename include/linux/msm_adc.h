@@ -344,6 +344,8 @@ int32_t adc_channel_open(uint32_t channel, void **h);
 int32_t adc_channel_close(void *h);
 int32_t adc_channel_request_conv(void *h, struct completion *conv_complete_evt);
 int32_t adc_channel_read_result(void *h, struct adc_chan_result *chan_result);
+int32_t adc_rpc_read_result(uint32_t channel,
+	struct adc_chan_result *chan_result);
 #else
 static inline int32_t adc_channel_open(uint32_t channel, void **h)
 {
@@ -363,6 +365,12 @@ adc_channel_request_conv(void *h, struct completion *conv_complete_evt)
 }
 static inline int32_t
 adc_channel_read_result(void *h, struct adc_chan_result *chan_result)
+{
+	pr_err("%s.not supported.\n", __func__);
+	return -ENODEV;
+}
+static inline int32_t
+adc_rpc_read_result(uint32_t channel, struct adc_chan_result *chan_result)
 {
 	pr_err("%s.not supported.\n", __func__);
 	return -ENODEV;

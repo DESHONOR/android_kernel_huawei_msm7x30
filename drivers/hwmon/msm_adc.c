@@ -897,6 +897,15 @@ int32_t adc_channel_read_result(void *h, struct adc_chan_result *chan_result)
 	return rc;
 }
 
+int32_t adc_rpc_read_result(uint32_t channel,
+	struct adc_chan_result *chan_result)
+{
+	if (!msm_adc_drv)
+		return -EAGAIN;
+	return msm_rpc_adc_blocking_conversion(msm_adc_drv, channel,
+		chan_result);
+}
+
 static void msm_rpc_adc_conv_cb(void *context, u32 param,
 			    void *evt_buf, u32 len)
 {

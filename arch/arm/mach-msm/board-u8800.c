@@ -51,7 +51,6 @@
 #include <mach/qdsp5v2/aux_pcm.h>
 #include <mach/qdsp5v2/mi2s.h>
 #include <mach/qdsp5v2/audio_dev_ctl.h>
-#include <mach/msm_battery.h>
 #include <linux/power/bq2415x_charger.h>
 #include <mach/rpc_server_handset.h>
 #include <mach/msm_tsif.h>
@@ -3203,26 +3202,6 @@ static void __init bt_power_init(void)
 }
 #endif
 
-static bool msm_psy_batt_is_charger_valid(void)
-{
-	return !bq24152_boost_mode;
-}
-
-static struct msm_psy_batt_pdata msm_psy_batt_data = {
-	.voltage_min_design 	= 3400,
-	.voltage_max_design	= 4200,
-	.voltage_fail_safe	= 3512,
-	.avail_chg_sources	= AC_CHG | USB_CHG ,
-	.batt_technology	= POWER_SUPPLY_TECHNOLOGY_LION,
-	.is_charger_valid	= msm_psy_batt_is_charger_valid,
-};
-
-static struct platform_device msm_batt_device = {
-	.name 			= "msm-battery",
-	.id			= -1,
-	.dev.platform_data	= &msm_psy_batt_data,
-};
-
 static struct i2c_gpio_platform_data i2c_dcdc_pdata = {
 	.scl_pin = 149,
 	.sda_pin = 150,
@@ -3396,8 +3375,6 @@ static struct platform_device *devices[] __initdata = {
 		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
 	&qcedev_device,
 #endif
-
-	&msm_batt_device,
 	&msm_adc_device,
 	&msm_ebi0_thermal,
 	&msm_ebi1_thermal,

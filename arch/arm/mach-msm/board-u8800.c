@@ -2712,11 +2712,10 @@ static void __init msm_fb_add_devices(void)
 #endif
 }
 
-#if defined(CONFIG_MARIMBA_CORE) && \
-   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
+#ifdef CONFIG_MARIMBA_CORE
 static struct platform_device msm_bt_power_device = {
-	.name = "bt_power",
-	.id     = -1
+	.name	= "bt_power",
+	.id	= -1
 };
 
 enum {
@@ -3168,8 +3167,6 @@ static void __init bt_power_init(void)
 {
 	msm_bt_power_device.dev.platform_data = &bluetooth_power;
 }
-#else
-#define bt_power_init(x) do {} while (0)
 #endif
 
 static bool msm_psy_batt_is_charger_valid(void)
@@ -3312,8 +3309,7 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&msm_device_adspdec,
 	&qup_device_i2c,
-#if defined(CONFIG_MARIMBA_CORE) && \
-   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
+#ifdef CONFIG_MARIMBA_CORE
 	&msm_bt_power_device,
 #endif
 	&msm_kgsl_3d0,

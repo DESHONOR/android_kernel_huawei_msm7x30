@@ -82,7 +82,6 @@
 #include "pm.h"
 
 #include <linux/i2c/atmel_mxt_ts.h>
-#include <linux/input/rmi_i2c.h>
 #include <linux/input/aps-12d.h>
 #include <linux/input/lsm303dlh.h>
 #include <sound/tpa2028d.h>
@@ -4343,17 +4342,8 @@ static struct kobj_attribute atmel_mxt_ts_virtual_keys_attr = {
 	.show = &u8800_virtual_keys_register,
 };
 
-static struct kobj_attribute synaptics_virtual_keys_attr = {
-	.attr = {
-		.name = "virtualkeys.sensor00fn11",
-		.mode = S_IRUGO,
-	},
-	.show = &u8800_virtual_keys_register,
-};
-
 static struct attribute *virtual_key_properties_attrs[] = {
 	&atmel_mxt_ts_virtual_keys_attr.attr,
-	&synaptics_virtual_keys_attr.attr,
 	NULL
 };
 
@@ -4481,83 +4471,6 @@ static struct i2c_board_info atmel_mxt_ts = {
 };
 #endif
 
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C)
-static struct rmi_f11_functiondata synaptics_f11_data = {
-	.button_height = 182,
-};
-
-static struct rmi_functiondata synaptics_functiondata[] = {
-	{
-		.function_index = RMI_F11_INDEX,
-		.data = &synaptics_f11_data,
-	},
-};
-
-static struct rmi_functiondata_list synaptics_perfunctiondata = {
-	.count = ARRAY_SIZE(synaptics_functiondata),
-	.functiondata = synaptics_functiondata,
-};
-
-static int synaptics_ts_setup(void)
-{
-	int ret = 0;
-
-	ret = gpio_request(TS_GPIO_IRQ, "rmi4_attn");
-	if (ret) {
-		pr_err("%s:Failed to obtain synaptics GPIO %d. Code: %d.",
-			__func__, TS_GPIO_IRQ, ret);
-		return ret;
-	}
-	ret = gpio_direction_input(TS_GPIO_IRQ);
-	if (ret) {
-		pr_err("%s:Failed to set direction for synaptics GPIO %d. Code: %d.",
-			__func__, TS_GPIO_IRQ, ret);
-		return ret;
-	}
-
-	ret = gpio_request(TS_GPIO_RESET, "rmi4_reset");
-	if (ret) {
-		pr_err("%s:Failed to obtain synaptics GPIO %d. Code: %d.",
-			__func__, TS_GPIO_RESET, ret);
-		return ret;
-	}
-	ret = gpio_direction_output(TS_GPIO_RESET, 0);
-	if (ret) {
-		pr_err("%s:Failed to set value for synaptics GPIO %d. Code: %d.",
-			__func__, TS_GPIO_RESET, ret);
-		return ret;
-	}
-	msleep(10);
-	ret = gpio_direction_output(TS_GPIO_RESET, 1);
-	if (ret) {
-		pr_err("%s:Failed to set value for synaptics GPIO %d. Code: %d.",
-			__func__, TS_GPIO_RESET, ret);
-		return ret;
-	}
-	msleep(50);
-
-	return ret;
-}
-
-static struct rmi_sensordata synaptics_sensordata = {
-	.perfunctiondata = &synaptics_perfunctiondata,
-	.rmi_sensor_setup = synaptics_ts_setup,
-};
-
-static struct rmi_i2c_platformdata synaptics_platform_data = {
-	.i2c_address = 0x70,
-	.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
-	.irq_type = IORESOURCE_IRQ_LOWLEVEL,
-	.sensordata = &synaptics_sensordata,
-};
-
-static struct i2c_board_info synaptics_i2c_ts = {
-	I2C_BOARD_INFO("rmi4_ts", 0x70),
-	.platform_data = &synaptics_platform_data,
-	.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
-};
-#endif
-
 static int __init i2c_touch_init(void)
 {
 	int ret;
@@ -4578,9 +4491,6 @@ static int __init i2c_touch_init(void)
 #endif
 	} else {
 		pr_debug("%s: Found Synaptics\n", __func__);
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C)
-		i2c_new_device(touch_i2c_adapter, &synaptics_i2c_ts);
-#endif
 	}
 
 	virtual_key_setup();

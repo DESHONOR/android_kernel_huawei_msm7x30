@@ -86,6 +86,7 @@
 #include <linux/input/rmi_i2c.h>
 #include <linux/input/aps-12d.h>
 #include <linux/input/lsm303dlh.h>
+#include <sound/tpa2028d.h>
 
 
 #define MSM_PMEM_SF_SIZE	0x1700000
@@ -1007,24 +1008,31 @@ static int __init snddev_poweramp_gpio_init(void)
 
 void msm_snddev_tx_route_config(void)
 {
-	pr_debug("%s()\n", __func__);
+
 }
 
 void msm_snddev_tx_route_deconfig(void)
 {
-	pr_debug("%s()\n", __func__);
+
+}
+
+void msm_sndddev_poweramp_gpio(bool enable)
+{
+	gpio_set_value(82, enable ? 1 : 0);
 }
 
 void msm_snddev_poweramp_on(void)
 {
-	gpio_set_value(82, 1);	/* enable spkr poweramp */
 	pr_debug("%s: power on amplifier\n", __func__);
+
+	set_amp_gain(SPK_ON);
 }
 
 void msm_snddev_poweramp_off(void)
 {
-	gpio_set_value(82, 0);	/* disable spkr poweramp */
 	pr_debug("%s: power off amplifier\n", __func__);
+
+	set_amp_gain(SPK_OFF);
 }
 
 static struct regulator_bulk_data snddev_regs[] = {
@@ -2007,6 +2015,26 @@ static struct lsm303dlh_mag_platform_data lsm303dlh_mag_pdata = {
 };
 #endif
 
+#ifdef CONFIG_SND_SOC_TPA2028D
+static int tpa2028d_enable(int enable)
+{
+	switch (enable) {
+		case 0: msm_sndddev_poweramp_gpio(false); break;
+		case 1: msm_sndddev_poweramp_gpio(true); break;
+		default: break;
+	}
+
+	return 0;
+}
+
+static struct audio_amp_platform_data tpa2028d_platform_data =  {
+	.enable = tpa2028d_enable,
+	.agc_compression_rate = 0,
+	.agc_output_limiter_disable = 1,
+	.agc_fixed_gain = 12,
+};
+#endif
+
 static struct i2c_board_info msm_i2c_board_info[] = {
 	#ifdef CONFIG_APS_12D
 	{
@@ -2023,6 +2051,12 @@ static struct i2c_board_info msm_i2c_board_info[] = {
 		I2C_BOARD_INFO("lsm303dlh_mag", 0x3C >> 1),
 		.platform_data = &lsm303dlh_mag_pdata,
 	},
+	#endif
+	#ifdef CONFIG_SND_SOC_TPA2028D
+	{
+		I2C_BOARD_INFO("tpa2028d_amp", 0xB0 >> 1),
+		.platform_data = &tpa2028d_platform_data,
+	}
 	#endif
 };
 

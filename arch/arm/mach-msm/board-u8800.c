@@ -82,6 +82,7 @@
 #include "pm.h"
 
 #include <linux/i2c/atmel_mxt_ts.h>
+#include <linux/input/synaptics_dsx.h>
 #include <linux/input/aps-12d.h>
 #include <linux/input/lsm303dlh.h>
 #include <sound/tpa2028d.h>
@@ -4342,8 +4343,17 @@ static struct kobj_attribute atmel_mxt_ts_virtual_keys_attr = {
 	.show = &u8800_virtual_keys_register,
 };
 
+static struct kobj_attribute synaptics_rmi4_ts_virtual_keys_attr = {
+	.attr = {
+		.name = "virtualkeys.synaptics_rmi4_i2c",
+		.mode = S_IRUGO,
+	},
+	.show = &u8800_virtual_keys_register,
+};
+
 static struct attribute *virtual_key_properties_attrs[] = {
 	&atmel_mxt_ts_virtual_keys_attr.attr,
+	&synaptics_rmi4_ts_virtual_keys_attr.attr,
 	NULL
 };
 
@@ -4471,6 +4481,28 @@ static struct i2c_board_info atmel_mxt_ts = {
 };
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+static struct synaptics_rmi4_platform_data rmi4_platform_data = {
+	.regulator_en		= false,
+	.i2c_pull_up		= false,
+	.irq_gpio		= TS_GPIO_IRQ,
+	.irq_flags		= IRQF_TRIGGER_FALLING,
+	.reset_gpio		= TS_GPIO_RESET,
+	.panel_x		= 480,
+	.panel_y		= 882,
+	.disp_x			= 480,
+	.disp_y			= 800,
+	.fw_image_name		= NULL,
+	.capacitance_button_map = NULL,
+};
+
+static struct i2c_board_info synaptics_rmi4_ts = {
+	I2C_BOARD_INFO("synaptics_rmi4_i2c", 0x70),
+	.platform_data = &rmi4_platform_data,
+	.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
+};
+#endif
+
 static int __init i2c_touch_init(void)
 {
 	int ret;
@@ -4489,6 +4521,9 @@ static int __init i2c_touch_init(void)
 #endif
 	} else {
 		pr_debug("%s: Found Synaptics\n", __func__);
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+		i2c_new_device(touch_i2c_adapter, &synaptics_rmi4_ts);
+#endif
 	}
 
 	virtual_key_setup();

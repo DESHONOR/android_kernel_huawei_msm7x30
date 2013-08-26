@@ -4530,7 +4530,7 @@ static int __init i2c_touch_init(void)
 
 	return 0;
 }
-fs_initcall_sync(i2c_touch_init);
+device_initcall(i2c_touch_init);
 #endif /* CONFIG_INPUT_TOUCHSCREEN */
 
 static void __init msm7x30_init(void)

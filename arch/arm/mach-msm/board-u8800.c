@@ -4476,7 +4476,6 @@ static int __init i2c_touch_init(void)
 	int ret;
 	struct i2c_adapter *touch_i2c_adapter;
 	union i2c_smbus_data data;
-	u8 value;
 
 	touch_i2c_adapter = i2c_get_adapter(0);
 
@@ -4484,7 +4483,6 @@ static int __init i2c_touch_init(void)
 		I2C_SMBUS_BYTE_DATA, &data);
 
 	if (!ret) {
-		value = data.byte;
 		pr_debug("%s: Found Atmel mXT224\n", __func__);
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
 		i2c_new_device(touch_i2c_adapter, &atmel_mxt_ts);

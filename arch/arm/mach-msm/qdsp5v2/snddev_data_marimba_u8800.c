@@ -312,7 +312,7 @@ static struct platform_device msm_ifmradio_handset_device = {
 
 
 static struct adie_codec_action_unit ispeaker_rx_48KHz_osr256_actions[] =
-   SPEAKER_MONO_RX_48000_OSR_256;
+   SPEAKER_RX_48000_OSR_256;
 
 static struct adie_codec_hwsetting_entry ispeaker_rx_settings[] = {
 	{

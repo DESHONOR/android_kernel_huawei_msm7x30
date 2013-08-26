@@ -4382,7 +4382,7 @@ static int virtual_key_setup(void)
 	return ret;
 }
 
-#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
 static const u8 mxt224_config_data[] = {
 	/* T6 Object */
 	 0, 0, 0, 0, 0, 0,
@@ -4516,7 +4516,7 @@ static int __init i2c_touch_init(void)
 
 	if (!ret) {
 		pr_debug("%s: Found Atmel mXT224\n", __func__);
-#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
 		i2c_new_device(touch_i2c_adapter, &atmel_mxt_ts);
 #endif
 	} else {

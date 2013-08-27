@@ -67,6 +67,22 @@ static struct msm_gpiomux_config msm7x30_i2c_dcdc_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting mdp_vsync_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config msm7x30_standard_configs[] __initdata = {
+	{	/* MDP_VSYNC */
+		.gpio = 30,
+		.settings = {
+			[GPIOMUX_SUSPENDED]    = &mdp_vsync_cfg,
+		},
+	},
+};
+
 int __init msm7x30_init_gpiomux(void)
 {
 	int rc = msm_gpiomux_init(NR_GPIO_IRQS);
@@ -80,6 +96,9 @@ int __init msm7x30_init_gpiomux(void)
 
 	msm_gpiomux_install(msm7x30_i2c_dcdc_configs,
 			ARRAY_SIZE(msm7x30_i2c_dcdc_configs));
+
+	msm_gpiomux_install(msm7x30_standard_configs,
+			ARRAY_SIZE(msm7x30_standard_configs));
 
 	return rc;
 }

@@ -266,7 +266,7 @@ obj-$(CONFIG_MACH_MSM8X55_SURF) += board-msm7x30.o devices-msm7x30.o gpiomux-7x3
 obj-$(CONFIG_MACH_MSM8X55_FFA) += board-msm7x30.o devices-msm7x30.o gpiomux-7x30.o
 obj-$(CONFIG_MACH_MSM8X55_SVLTE_FFA) += board-msm7x30.o devices-msm7x30.o gpiomux-7x30.o
 obj-$(CONFIG_MACH_MSM8X55_SVLTE_SURF) += board-msm7x30.o devices-msm7x30.o gpiomux-7x30.o
-obj-$(CONFIG_MACH_HUAWEI_U8800) += board-u8800.o devices-u8800.o board-u8800-gpiomux.o
+obj-$(CONFIG_MACH_HUAWEI_U8800) += board-u8800.o devices-u8800.o board-u8800-gpiomux.o board-u8800-battery.o
 ifndef CONFIG_MSM_BT_POWER
 obj-$(CONFIG_MACH_HUAWEI_U8800) += board-u8800-rfkill.o
 endif

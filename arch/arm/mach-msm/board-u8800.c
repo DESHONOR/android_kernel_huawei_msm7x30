@@ -2249,9 +2249,8 @@ static void __init msm_qsd_spi_init(void)
 	qsd_device_spi.dev.platform_data = &qsd_spi_pdata;
 }
 
-static void (*bq24152_hook)(enum bq2415x_mode mode, void *data);
-static void *bq24152_data;
-static bool bq24152_boost_mode = false;
+void (*bq24152_hook)(enum bq2415x_mode mode, void *data);
+void *bq24152_data;
 
 #ifdef CONFIG_USB_EHCI_MSM_72K
 static void msm_hsusb_vbus_power(unsigned phy_info, int on)
@@ -2268,7 +2267,6 @@ static void msm_hsusb_vbus_power(unsigned phy_info, int on)
 			bq24152_hook(BQ2415X_MODE_BOOST, bq24152_data);
 		else
 			bq24152_hook(BQ2415X_MODE_NONE, bq24152_data);
-		bq24152_boost_mode = on;
 	}
 
 	vbus_is_on = on;
@@ -2334,33 +2332,6 @@ static int msm_hsusb_ldo_set_voltage(int mV)
 }
 #endif
 
-static void msm_hsusb_chg_connected(enum chg_type chg_type)
-{
-	static int chg_type_set = USB_CHG_TYPE__INVALID;
-
-	/* If chg type is already set to same, do nothing. */
-	if (unlikely(chg_type == chg_type_set))
-		return;
-
-	if (bq24152_hook == NULL || bq24152_data == NULL)
-		return;
-
-	switch (chg_type) {
-	case USB_CHG_TYPE__SDP:
-	case USB_CHG_TYPE__CARKIT:
-		bq24152_hook(BQ2415X_MODE_HOST_CHARGER, bq24152_data);
-		break;
-	case USB_CHG_TYPE__WALLCHARGER:
-		bq24152_hook(BQ2415X_MODE_DEDICATED_CHARGER, bq24152_data);
-		break;
-	case USB_CHG_TYPE__INVALID:
-		//bq24152_hook(BQ2415X_MODE_NONE, bq24152_data);
-		break;
-	}
-
-	chg_type_set = chg_type;
-}
-
 static struct msm_otg_platform_data msm_otg_pdata = {
 #ifdef CONFIG_USB_EHCI_MSM_72K
 	.vbus_power = msm_hsusb_vbus_power,
@@ -2369,7 +2340,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.cdr_autoreset		 = CDR_AUTO_RESET_DISABLE,
 	.drv_ampl		 = HS_DRV_AMPLITUDE_DEFAULT,
 	.se1_gating		 = SE1_GATING_DISABLE,
-	.chg_connected		 = msm_hsusb_chg_connected,
+	.chg_connected		 = batt_chg_connected,
 	.ldo_enable		 = msm_hsusb_ldo_enable,
 	.ldo_init		 = msm_hsusb_ldo_init,
 	.ldo_set_voltage	 = msm_hsusb_ldo_set_voltage,
@@ -3216,9 +3187,6 @@ static struct platform_device i2c_dcdc_device = {
 	.dev.platform_data = &i2c_dcdc_pdata,
 };
 
-static void (*bq24152_hook)(enum bq2415x_mode mode, void *data);
-static void *bq24152_data;
-
 int bq24152_set_mode_hook(void (*hook)(enum bq2415x_mode mode, void *data),
 	void *data)
 {
@@ -3376,6 +3344,7 @@ static struct platform_device *devices[] __initdata = {
 	&qcedev_device,
 #endif
 	&msm_adc_device,
+	&android_bat_device,
 	&msm_ebi0_thermal,
 	&msm_ebi1_thermal,
 	&msm_adsp_device,

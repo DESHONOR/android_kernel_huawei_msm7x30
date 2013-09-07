@@ -31,7 +31,7 @@
 #include <linux/slab.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
-#include <linux/alarmtimer.h>
+#include <linux/android_alarm.h>
 #include <linux/timer.h>
 #include <linux/mutex.h>
 #include <linux/debugfs.h>
@@ -448,7 +448,8 @@ static void android_bat_charger_work(struct work_struct *work)
 static void android_bat_monitor_set_alarm(struct android_bat_data *battery,
 					  int seconds)
 {
-	alarm_start(&battery->monitor_alarm,
+	alarm_start_range(&battery->monitor_alarm,
+		    ktime_add(battery->last_poll, ktime_set(seconds, 0)),
 		    ktime_add(battery->last_poll, ktime_set(seconds, 0)));
 }
 
@@ -530,15 +531,13 @@ static void android_bat_monitor_work(struct work_struct *work)
 	return;
 }
 
-static enum alarmtimer_restart android_bat_monitor_alarm(
-	struct alarm *alarm, ktime_t now)
+static void android_bat_monitor_alarm(struct alarm *alarm)
 {
 	struct android_bat_data *battery =
 		container_of(alarm, struct android_bat_data, monitor_alarm);
 
 	wake_lock(&battery->monitor_wake_lock);
 	queue_work(battery->monitor_wqueue, &battery->monitor_work);
-	return ALARMTIMER_NORESTART;
 }
 
 static int android_power_debug_dump(struct seq_file *s, void *unused)
@@ -674,7 +673,7 @@ static __devinit int android_bat_probe(struct platform_device *pdev)
 
 	wake_lock(&battery->monitor_wake_lock);
 	battery->last_poll = ktime_get_boottime();
-	alarm_init(&battery->monitor_alarm, ALARM_BOOTTIME,
+	alarm_init(&battery->monitor_alarm, ANDROID_ALARM_ELAPSED_REALTIME,
 		   android_bat_monitor_alarm);
 	queue_work(battery->monitor_wqueue, &battery->monitor_work);
 

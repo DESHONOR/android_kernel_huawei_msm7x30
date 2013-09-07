@@ -30,6 +30,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 #include <linux/param.h>
 #include <linux/err.h>
 #include <linux/workqueue.h>
@@ -197,6 +198,7 @@ static int bq2415x_i2c_read(struct bq2415x_device *bq, u8 reg)
 	struct i2c_msg msg[2];
 	u8 val;
 	int ret;
+	int tries;
 
 	if (!client->adapter)
 		return -ENODEV;
@@ -210,9 +212,17 @@ static int bq2415x_i2c_read(struct bq2415x_device *bq, u8 reg)
 	msg[1].buf = &val;
 	msg[1].len = sizeof(val);
 
-	mutex_lock(&bq2415x_i2c_mutex);
-	ret = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
-	mutex_unlock(&bq2415x_i2c_mutex);
+	for (tries = 0; tries < 5; tries++) {
+		mutex_lock(&bq2415x_i2c_mutex);
+		ret = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
+		mutex_unlock(&bq2415x_i2c_mutex);
+
+		if (ret != ARRAY_SIZE(msg))
+			msleep(10);
+		else
+			break;
+	}
+
 
 	if (ret < 0)
 		return ret;
@@ -252,6 +262,7 @@ static int bq2415x_i2c_write(struct bq2415x_device *bq, u8 reg, u8 val)
 	struct i2c_msg msg[1];
 	u8 data[2];
 	int ret;
+	int tries;
 
 	data[0] = reg;
 	data[1] = val;
@@ -261,9 +272,16 @@ static int bq2415x_i2c_write(struct bq2415x_device *bq, u8 reg, u8 val)
 	msg[0].buf = data;
 	msg[0].len = ARRAY_SIZE(data);
 
-	mutex_lock(&bq2415x_i2c_mutex);
-	ret = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
-	mutex_unlock(&bq2415x_i2c_mutex);
+	for (tries = 0; tries < 5; tries++) {
+		mutex_lock(&bq2415x_i2c_mutex);
+		ret = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
+		mutex_unlock(&bq2415x_i2c_mutex);
+
+		if (ret != ARRAY_SIZE(msg))
+			msleep(10);
+		else
+			break;
+	}
 
 	/* i2c_transfer returns number of messages transferred */
 	if (ret < 0)

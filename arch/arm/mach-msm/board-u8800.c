@@ -4401,13 +4401,13 @@ static ssize_t u8800_virtual_keys_register(struct kobject *kobj,
 {
 	char *virtual_keys =
 		__stringify(EV_KEY) ":" __stringify(KEY_BACK)
-			":67:862:50:50\n"
+			":67:862:60:50\n"
 		__stringify(EV_KEY) ":" __stringify(KEY_MENU)
-			":199:862:50:50\n"
+			":199:862:60:50\n"
 		__stringify(EV_KEY) ":" __stringify(KEY_HOMEPAGE)
-			":304:862:50:50\n"
+			":304:862:60:50\n"
 		__stringify(EV_KEY) ":" __stringify(KEY_SEARCH)
-			":413:862:50:50\n";
+			":413:862:60:50\n";
 
 	return snprintf(buf, strnlen(virtual_keys, MAX_LEN) + 1 , "%s",
 		virtual_keys);

@@ -11,49 +11,144 @@
  *
  */
 
-#include <linux/msm_adc.h>
+#include <linux/err.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/android_battery.h>
 #include <linux/power/bq2415x_charger.h>
 #include <linux/wakelock.h>
 #include <mach/msm_hsusb.h>
+#include <mach/msm_rpcrouter.h>
 
 #include "board-u8800.h"
-
-#define VBAT_ADC_CHANNEL	1
-#define BATT_TEMP_CHANNEL	5 /* MPP_07 */
 
 #define BATTERY_LOW_UVOLTS	3400000
 #define BATTERY_HIGH_UVOLTS	4200000
 
+#define CHG_RPC_PROG				0x3000001a
+#define CHG_RPC_VER_4_1				0x00040001
+#define ONCRPC_CHG_GET_GENERAL_STATUS_PROC	12
+
+/* The modem may be busy, let's ask for new information and wait for 5 seconds
+ * before asking for new info. */
+#define CHG_RPC_PULL_INTERVAL_NS		5000000000
+
 static struct wake_lock charger_wakelock;
+static struct msm_rpc_endpoint *chg_ep;
 
-static int batt_read_adc(int32_t channel, int32_t *reading)
+enum rpc_information_type {
+	RPC_CHARGER_STATUS,
+	RPC_CHARGER_TYPE,
+	RPC_CHARGER_VALID,
+	RPC_CHARGER_CHARGING,
+
+	RPC_BATTERY_STATUS,
+	RPC_BATTERY_LEVEL,
+	RPC_BATTERY_VOLTAGE,
+	RPC_BATTERY_TEMP,
+	RPC_BATTERY_VALID,
+
+	RPC_UI_EVENT
+};
+
+static int32_t rpc_get_information(enum rpc_information_type type)
 {
-	int ret = 0;
-	struct adc_chan_result chan_result;
+	int32_t ret;
 
-	ret = adc_rpc_read_result(channel, &chan_result);
-	if (!ret)
-		*reading = chan_result.physical;
+	struct rpc_req_batt_chg {
+		struct rpc_request_hdr hdr;
+		u32 more_data;
+	} req_batt_chg;
+	struct rpc_rep_batt_chg {
+		struct rpc_reply_hdr hdr;
+		u32 more_data;
 
-	return ret;
+		u32 charger_status;
+		u32 charger_type;
+		u32 battery_status;
+		u32 battery_level;
+		u32 battery_voltage;
+		u32 battery_temp;
+
+		u32 charger_valid;
+		u32 charger_charging;
+		u32 battery_valid;
+		u32 ui_event;
+	} static rep_batt_chg;
+	static ktime_t last_poll;
+
+	memset(&req_batt_chg, 0, sizeof(req_batt_chg));
+	req_batt_chg.more_data = cpu_to_be32(1);
+
+	if (!chg_ep)
+		return -ENODEV;
+
+	/* Pull only if time has expired. */
+	if ((ktime_to_ns(last_poll) + CHG_RPC_PULL_INTERVAL_NS)
+		< ktime_to_ns(ktime_get_real())) {
+		memset(&rep_batt_chg, 0, sizeof(rep_batt_chg));
+		ret = msm_rpc_call_reply(chg_ep,
+			ONCRPC_CHG_GET_GENERAL_STATUS_PROC,
+			&req_batt_chg, sizeof(req_batt_chg),
+			&rep_batt_chg, sizeof(rep_batt_chg),
+			msecs_to_jiffies(1000));
+		last_poll = ktime_get_real();
+	} else
+		ret = 0;
+
+
+	if (ret < 0)
+		return ret;
+
+	switch (type) {
+	case RPC_CHARGER_STATUS:
+		ret = rep_batt_chg.charger_status; break;
+	case RPC_CHARGER_TYPE:
+		ret = rep_batt_chg.charger_type; break;
+	case RPC_CHARGER_VALID:
+		ret = rep_batt_chg.charger_valid; break;
+	case RPC_CHARGER_CHARGING:
+		ret = rep_batt_chg.charger_charging; break;
+	case RPC_BATTERY_STATUS:
+		ret = rep_batt_chg.battery_status; break;
+	case RPC_BATTERY_LEVEL:
+		ret = rep_batt_chg.battery_level; break;
+	case RPC_BATTERY_VOLTAGE:
+		ret = rep_batt_chg.battery_voltage; break;
+	case RPC_BATTERY_TEMP:
+		ret = rep_batt_chg.battery_temp; break;
+	case RPC_BATTERY_VALID:
+		ret = rep_batt_chg.battery_valid; break;
+	case RPC_UI_EVENT:
+		ret = rep_batt_chg.ui_event; break;
+	default:
+		return -1;
+	}
+
+	return be32_to_cpu(ret);
+}
+
+static int rpc_initialize(bool init)
+{
+	if (init) {
+		chg_ep = msm_rpc_connect_compatible(CHG_RPC_PROG, CHG_RPC_VER_4_1, 0);
+		if (IS_ERR(chg_ep))
+			return PTR_ERR(chg_ep);
+	} else {
+		msm_rpc_close(chg_ep);
+		chg_ep = NULL;
+	}
+
+	return 0;
 }
 
 static int batt_get_voltage(void)
 {
-	int32_t voltage = 0;
-	batt_read_adc(VBAT_ADC_CHANNEL, &voltage);
-	return voltage * 1000;
+	return rpc_get_information(RPC_BATTERY_VOLTAGE) * 1000;
 }
 
 static int batt_get_temperature(void)
 {
-	int32_t temp = 0;
-	batt_read_adc(BATT_TEMP_CHANNEL, &temp);
-	if (temp == 80) /* TODO: Fix. */
-		temp = 35;
-	return temp * 10;
+	return rpc_get_information(RPC_BATTERY_TEMP) * 10;
 }
 
 static int batt_get_capacity(void)
@@ -101,13 +196,11 @@ static void android_bat_register_callbacks(
 	struct android_bat_callbacks *callbacks)
 {
 	android_bat_cb = callbacks;
-	wake_lock_init(&charger_wakelock, WAKE_LOCK_SUSPEND, "charger");
 }
 
 static void android_bat_unregister_callbacks(void)
 {
 	android_bat_cb = NULL;
-	wake_lock_destroy(&charger_wakelock);
 }
 
 static void android_bat_set_charging_current(int type)
@@ -183,3 +276,22 @@ struct platform_device android_bat_device = {
 		.platform_data = &android_bat_pdata,
 	},
 };
+
+static int __init battery_init(void)
+{
+	wake_lock_init(&charger_wakelock, WAKE_LOCK_SUSPEND, "charger");
+
+	rpc_initialize(true);
+
+	return 0;
+}
+
+static void __exit battery_exit(void)
+{
+	wake_lock_destroy(&charger_wakelock);
+
+	rpc_initialize(false);
+}
+
+module_init(battery_init);
+module_exit(battery_exit);

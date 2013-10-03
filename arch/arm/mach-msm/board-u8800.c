@@ -277,6 +277,15 @@ static struct led_info pm8xxx_led_info[] = {
 	[0] = {
 		.name = "button-backlight",
 	},
+	[1] = {
+		.name = "red",
+	},
+	[2] = {
+		.name = "green",
+	},
+	[3] = {
+		.name = "blue",
+	},
 };
 
 static struct led_platform_data pm8xxx_led_core_pdata = {
@@ -291,6 +300,18 @@ static struct pm8xxx_led_config pm8xxx_led_configs[] = {
 		.max_current = 150, /* 10 <= I <= 150 */
 		.pwm_channel = 3,
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
+	},
+	[1] = {
+		.id = PM8XXX_ID_LED_0,
+		.mode = PM8XXX_LED_MODE_MANUAL,
+	},
+	[2] = {
+		.id = PM8XXX_ID_LED_1,
+		.mode = PM8XXX_LED_MODE_MANUAL,
+	},
+	[3] = {
+		.id = PM8XXX_ID_LED_2,
+		.mode = PM8XXX_LED_MODE_MANUAL,
 	},
 };
 

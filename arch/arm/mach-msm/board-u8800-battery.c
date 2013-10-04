@@ -73,7 +73,9 @@ static int32_t rpc_get_information(enum rpc_information_type type)
 		u32 charger_charging;
 		u32 battery_valid;
 		u32 ui_event;
-	} static rep_batt_chg;
+	} rep_batt_chg;
+
+	static struct rpc_rep_batt_chg last_rep_batt_chg;
 	static ktime_t last_poll;
 
 	memset(&req_batt_chg, 0, sizeof(req_batt_chg));
@@ -91,6 +93,8 @@ static int32_t rpc_get_information(enum rpc_information_type type)
 			&req_batt_chg, sizeof(req_batt_chg),
 			&rep_batt_chg, sizeof(rep_batt_chg),
 			msecs_to_jiffies(1000));
+		if (rep_batt_chg.more_data)
+			last_rep_batt_chg = rep_batt_chg;
 		last_poll = ktime_get_real();
 	} else
 		ret = 0;
@@ -101,25 +105,25 @@ static int32_t rpc_get_information(enum rpc_information_type type)
 
 	switch (type) {
 	case RPC_CHARGER_STATUS:
-		ret = rep_batt_chg.charger_status; break;
+		ret = last_rep_batt_chg.charger_status; break;
 	case RPC_CHARGER_TYPE:
-		ret = rep_batt_chg.charger_type; break;
+		ret = last_rep_batt_chg.charger_type; break;
 	case RPC_CHARGER_VALID:
-		ret = rep_batt_chg.charger_valid; break;
+		ret = last_rep_batt_chg.charger_valid; break;
 	case RPC_CHARGER_CHARGING:
-		ret = rep_batt_chg.charger_charging; break;
+		ret = last_rep_batt_chg.charger_charging; break;
 	case RPC_BATTERY_STATUS:
-		ret = rep_batt_chg.battery_status; break;
+		ret = last_rep_batt_chg.battery_status; break;
 	case RPC_BATTERY_LEVEL:
-		ret = rep_batt_chg.battery_level; break;
+		ret = last_rep_batt_chg.battery_level; break;
 	case RPC_BATTERY_VOLTAGE:
-		ret = rep_batt_chg.battery_voltage; break;
+		ret = last_rep_batt_chg.battery_voltage; break;
 	case RPC_BATTERY_TEMP:
-		ret = rep_batt_chg.battery_temp; break;
+		ret = last_rep_batt_chg.battery_temp; break;
 	case RPC_BATTERY_VALID:
-		ret = rep_batt_chg.battery_valid; break;
+		ret = last_rep_batt_chg.battery_valid; break;
 	case RPC_UI_EVENT:
-		ret = rep_batt_chg.ui_event; break;
+		ret = last_rep_batt_chg.ui_event; break;
 	default:
 		return -1;
 	}

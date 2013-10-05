@@ -31,62 +31,28 @@
  * termination current. It it is less or equal to zero, configuring charge
  * and termination current will not be possible.
  *
- * Function set_mode_hook is needed for automode (setting correct current
- * limit when charger is connected/disconnected or setting boost mode).
- * When is NULL, automode function is disabled. When is not NULL, it must
- * have this prototype:
+ * Callback register/unregister is used to modify the charge current & mode,
+ * as described in bq2415x_mode.
  *
- *    int (*set_mode_hook)(
- *      void (*hook)(enum bq2415x_mode mode, void *data),
- *      void *data)
- *
- * hook is hook function (see below) and data is pointer to driver private
- * data
- *
- * bq2415x driver will call it as:
- *
- *    platform_data->set_mode_hook(bq2415x_hook_function, bq2415x_device);
- *
- * Board/platform function set_mode_hook return non zero value when hook
- * function was successful registered. Platform code should call that hook
- * function (which get from pointer, with data) every time when charger
- * was connected/disconnected or require to enable boost mode. bq2415x
- * driver then will set correct current limit, enable/disable charger or
- * boost mode.
- *
- * Hook function has this prototype:
- *
- *    void hook(enum bq2415x_mode mode, void *data);
- *
- * mode is bq2415x mode (charger or boost)
- * data is pointer to driver private data (which get from
- * set_charger_type_hook)
- *
- * When bq driver is being unloaded, it call function:
- *
- *    platform_data->set_mode_hook(NULL, NULL);
- *
- * (hook function and driver private data are NULL)
- *
- * After that board/platform code must not call driver hook function! It
- * is possible that pointer to hook function will not be valid and calling
- * will cause undefined result.
  */
-
-/* Supported modes with maximal current limit */
-enum bq2415x_mode {
-	BQ2415X_MODE_OFF,		/* offline mode (charger disabled) */
-	BQ2415X_MODE_NONE,		/* unknown charger (100mA) */
-	BQ2415X_MODE_HOST_CHARGER,	/* usb host/hub charger (500mA) */
-	BQ2415X_MODE_DEDICATED_CHARGER, /* dedicated charger (unlimited) */
-	BQ2415X_MODE_BOOST,		/* boost mode (charging disabled) */
-};
 
 enum bq2415x_status {
 	BQ2415X_STATUS_READY,		/* ready */
 	BQ2415X_STATUS_CHARGING,	/* charge in progress */
 	BQ2415X_STATUS_CHARGE_DONE,	/* charge done */
 	BQ2415X_STATUS_FAULT,		/* fault */
+};
+
+enum bq2415x_mode {
+	BQ2415X_MODE_OFF,
+	BQ2415X_MODE_CHARGE,
+	BQ2415X_MODE_BOOST,
+};
+
+struct bq2415x_callbacks {
+	void (*set_current_limit)(struct bq2415x_callbacks *ptr, int mA);
+	void (*set_mode)
+		(struct bq2415x_callbacks *ptr, enum bq2415x_mode mode);
 };
 
 struct bq2415x_platform_data {
@@ -96,9 +62,9 @@ struct bq2415x_platform_data {
 	int charge_current;		/* mA */
 	int termination_current;	/* mA */
 	int resistor_sense;		/* m ohm */
-	int (*set_mode_hook)(void (*hook)(enum bq2415x_mode mode, void *data),
-			     void *data);
 	void (*status_changed)(enum bq2415x_status status);
+	void (*register_callbacks)(struct bq2415x_callbacks *ptr);
+	void (*unregister_callbacks)(void);
 };
 
 #endif

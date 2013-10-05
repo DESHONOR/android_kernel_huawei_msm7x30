@@ -169,16 +169,14 @@ static char *bq2415x_chip_name[] = {
 struct bq2415x_device {
 	struct device *dev;
 	struct bq2415x_platform_data init_data;
+	struct bq2415x_callbacks callbacks;
 	struct power_supply charger;
 	struct delayed_work work;
-	enum bq2415x_mode reported_mode;/* mode reported by hook function */
-	enum bq2415x_mode mode;		/* current configured mode */
 	enum bq2415x_chip chip;
 	const char *timer_error;
 	char *model;
 	char *name;
 	int autotimer;	/* 1 - if driver automatically reset timer, 0 - not */
-	int automode;	/* 1 - enabled, 0 - disabled; -1 - not supported */
 	int id;
 	enum bq2415x_status last_status;
 };
@@ -753,85 +751,48 @@ static int bq2415x_set_defaults(struct bq2415x_device *bq)
 static int bq2415x_set_mode(struct bq2415x_device *bq, enum bq2415x_mode mode)
 {
 	int ret = 0;
-	int charger = 0;
-	int boost = 0;
-
-	if (mode == BQ2415X_MODE_BOOST)
-		boost = 1;
-	else if (mode != BQ2415X_MODE_OFF)
-		charger = 1;
-
-	if (!charger)
-		ret = bq2415x_exec_command(bq, BQ2415X_CHARGER_DISABLE);
-
-	if (!boost)
-		ret = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_DISABLE);
-
-	if (ret < 0)
-		return ret;
 
 	switch (mode) {
 	case BQ2415X_MODE_OFF:
-		dev_dbg(bq->dev, "changing mode to: Offline\n");
-		ret = bq2415x_set_current_limit(bq, 100);
+		ret = bq2415x_exec_command(bq, BQ2415X_CHARGER_DISABLE);
+		ret = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_DISABLE);
+		ret = bq2415x_exec_command(bq, BQ2415X_HIGH_IMPEDANCE_ENABLE);
 		break;
-	case BQ2415X_MODE_NONE:
-		dev_dbg(bq->dev, "changing mode to: N/A\n");
-		ret = bq2415x_set_current_limit(bq, 100);
+	case BQ2415X_MODE_CHARGE:
+		ret = bq2415x_exec_command(bq, BQ2415X_HIGH_IMPEDANCE_DISABLE);
+		ret = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_DISABLE);
+		ret = bq2415x_exec_command(bq, BQ2415X_CHARGER_ENABLE);
 		break;
-	case BQ2415X_MODE_HOST_CHARGER:
-		dev_dbg(bq->dev, "changing mode to: Host/HUB charger\n");
-		ret = bq2415x_set_current_limit(bq, 500);
-		break;
-	case BQ2415X_MODE_DEDICATED_CHARGER:
-		dev_dbg(bq->dev, "changing mode to: Dedicated charger\n");
-		ret = bq2415x_set_current_limit(bq, 1800);
-		break;
-	case BQ2415X_MODE_BOOST: /* Boost mode */
-		dev_dbg(bq->dev, "changing mode to: Boost\n");
-		ret = bq2415x_set_current_limit(bq, 100);
+	case BQ2415X_MODE_BOOST:
+		ret = bq2415x_exec_command(bq, BQ2415X_HIGH_IMPEDANCE_DISABLE);
+		ret = bq2415x_exec_command(bq, BQ2415X_CHARGER_DISABLE);
+		ret = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_ENABLE);
 		break;
 	}
 
-	if (ret < 0)
-		return ret;
-
-	if (charger)
-		ret = bq2415x_exec_command(bq, BQ2415X_CHARGER_ENABLE);
-	else if (boost)
-		ret = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_ENABLE);
-
-	if (ret < 0)
-		return ret;
-
-	bq2415x_set_default_value(bq, weak_battery_voltage);
-	bq2415x_set_default_value(bq, battery_regulation_voltage);
-
-	bq->mode = mode;
-	sysfs_notify(&bq->charger.dev->kobj, NULL, "mode");
-
-	return 0;
+	return ret;
 
 }
 
-/* hook function called by other driver which set reported mode */
-static void bq2415x_hook_function(enum bq2415x_mode mode, void *data)
+static void bq2415x_set_current_limit_cb(struct bq2415x_callbacks *ptr, int mA)
 {
-	struct bq2415x_device *bq = data;
+	struct bq2415x_device *bq =
+		container_of(ptr, struct bq2415x_device, callbacks);
 
-	if (!bq)
-		return;
+	dev_dbg(bq->dev, "set_current_limit_cb %d\n", mA);
 
-	dev_dbg(bq->dev, "hook function was called\n");
-	bq->reported_mode = mode;
+	bq2415x_set_current_limit(bq, mA);
+}
 
-	/* if automode is not enabled do not tell about reported_mode */
-	if (bq->automode < 1)
-		return;
+static void bq2415x_set_mode_cb(struct bq2415x_callbacks *ptr,
+	enum bq2415x_mode mode)
+{
+	struct bq2415x_device *bq =
+		container_of(ptr, struct bq2415x_device, callbacks);
 
-	sysfs_notify(&bq->charger.dev->kobj, NULL, "reported_mode");
-	bq2415x_set_mode(bq, bq->reported_mode);
+	dev_dbg(bq->dev, "set_mode_cb %d\n", mode);
 
+	bq2415x_set_mode(bq, mode);
 }
 
 /**** timer functions ****/
@@ -865,9 +826,6 @@ static void bq2415x_timer_error(struct bq2415x_device *bq, const char *msg)
 	bq->timer_error = msg;
 	sysfs_notify(&bq->charger.dev->kobj, NULL, "timer");
 	dev_err(bq->dev, "%s\n", msg);
-	if (bq->automode > 0)
-		bq->automode = 0;
-	bq2415x_set_mode(bq, BQ2415X_MODE_OFF);
 	bq2415x_set_autotimer(bq, 0);
 }
 
@@ -1081,8 +1039,6 @@ static int bq2415x_power_supply_init(struct bq2415x_device *bq)
 static void bq2415x_power_supply_exit(struct bq2415x_device *bq)
 {
 	bq->autotimer = 0;
-	if (bq->automode > 0)
-		bq->automode = 0;
 	cancel_delayed_work_sync(&bq->work);
 	power_supply_unregister(&bq->charger);
 	kfree(bq->model);
@@ -1161,133 +1117,6 @@ static ssize_t bq2415x_sysfs_show_timer(struct device *dev,
 	if (bq->autotimer)
 		return sprintf(buf, "auto\n");
 	return sprintf(buf, "off\n");
-}
-
-/*
- * set mode entry:
- *    auto - if automode is supported, enable it and set mode to reported
- *    none - disable charger and boost mode
- *    host - charging mode for host/hub chargers (current limit 500mA)
- *    dedicated - charging mode for dedicated chargers (unlimited current limit)
- *    boost - disable charger and enable boost mode
- */
-static ssize_t bq2415x_sysfs_set_mode(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf,
-				      size_t count)
-{
-	struct power_supply *psy = dev_get_drvdata(dev);
-	struct bq2415x_device *bq = container_of(psy, struct bq2415x_device,
-						 charger);
-	enum bq2415x_mode mode;
-	int ret = 0;
-
-	if (strncmp(buf, "auto", 4) == 0) {
-		if (bq->automode < 0)
-			return -ENOSYS;
-		bq->automode = 1;
-		mode = bq->reported_mode;
-	} else if (strncmp(buf, "off", 3) == 0) {
-		if (bq->automode > 0)
-			bq->automode = 0;
-		mode = BQ2415X_MODE_OFF;
-	} else if (strncmp(buf, "none", 4) == 0) {
-		if (bq->automode > 0)
-			bq->automode = 0;
-		mode = BQ2415X_MODE_NONE;
-	} else if (strncmp(buf, "host", 4) == 0) {
-		if (bq->automode > 0)
-			bq->automode = 0;
-		mode = BQ2415X_MODE_HOST_CHARGER;
-	} else if (strncmp(buf, "dedicated", 9) == 0) {
-		if (bq->automode > 0)
-			bq->automode = 0;
-		mode = BQ2415X_MODE_DEDICATED_CHARGER;
-	} else if (strncmp(buf, "boost", 5) == 0) {
-		if (bq->automode > 0)
-			bq->automode = 0;
-		mode = BQ2415X_MODE_BOOST;
-	} else if (strncmp(buf, "reset", 5) == 0) {
-		bq2415x_reset_chip(bq);
-		bq2415x_set_defaults(bq);
-		if (bq->automode <= 0)
-			return count;
-		bq->automode = 1;
-		mode = bq->reported_mode;
-	} else {
-		return -EINVAL;
-	}
-
-	ret = bq2415x_set_mode(bq, mode);
-	if (ret < 0)
-		return ret;
-	return count;
-}
-
-/* show mode entry (auto, none, host, dedicated or boost) */
-static ssize_t bq2415x_sysfs_show_mode(struct device *dev,
-				       struct device_attribute *attr,
-				       char *buf)
-{
-	struct power_supply *psy = dev_get_drvdata(dev);
-	struct bq2415x_device *bq = container_of(psy, struct bq2415x_device,
-						charger);
-	ssize_t ret = 0;
-
-	if (bq->automode > 0)
-		ret += sprintf(buf+ret, "auto (");
-
-	switch (bq->mode) {
-	case BQ2415X_MODE_OFF:
-		ret += sprintf(buf+ret, "off");
-		break;
-	case BQ2415X_MODE_NONE:
-		ret += sprintf(buf+ret, "none");
-		break;
-	case BQ2415X_MODE_HOST_CHARGER:
-		ret += sprintf(buf+ret, "host");
-		break;
-	case BQ2415X_MODE_DEDICATED_CHARGER:
-		ret += sprintf(buf+ret, "dedicated");
-		break;
-	case BQ2415X_MODE_BOOST:
-		ret += sprintf(buf+ret, "boost");
-		break;
-	}
-
-	if (bq->automode > 0)
-		ret += sprintf(buf+ret, ")");
-
-	ret += sprintf(buf+ret, "\n");
-	return ret;
-}
-
-/* show reported_mode entry (none, host, dedicated or boost) */
-static ssize_t bq2415x_sysfs_show_reported_mode(struct device *dev,
-						struct device_attribute *attr,
-						char *buf)
-{
-	struct power_supply *psy = dev_get_drvdata(dev);
-	struct bq2415x_device *bq = container_of(psy, struct bq2415x_device,
-						 charger);
-
-	if (bq->automode < 0)
-		return -EINVAL;
-
-	switch (bq->reported_mode) {
-	case BQ2415X_MODE_OFF:
-		return sprintf(buf, "off\n");
-	case BQ2415X_MODE_NONE:
-		return sprintf(buf, "none\n");
-	case BQ2415X_MODE_HOST_CHARGER:
-		return sprintf(buf, "host\n");
-	case BQ2415X_MODE_DEDICATED_CHARGER:
-		return sprintf(buf, "dedicated\n");
-	case BQ2415X_MODE_BOOST:
-		return sprintf(buf, "boost\n");
-	}
-
-	return -EINVAL;
 }
 
 /* directly set raw value to chip register, format: 'register value' */
@@ -1490,11 +1319,6 @@ static DEVICE_ATTR(otg_pin_enable, S_IWUSR | S_IRUGO,
 		bq2415x_sysfs_show_enable, bq2415x_sysfs_set_enable);
 static DEVICE_ATTR(stat_pin_enable, S_IWUSR | S_IRUGO,
 		bq2415x_sysfs_show_enable, bq2415x_sysfs_set_enable);
-
-static DEVICE_ATTR(reported_mode, S_IRUGO,
-		bq2415x_sysfs_show_reported_mode, NULL);
-static DEVICE_ATTR(mode, S_IWUSR | S_IRUGO,
-		bq2415x_sysfs_show_mode, bq2415x_sysfs_set_mode);
 static DEVICE_ATTR(timer, S_IWUSR | S_IRUGO,
 		bq2415x_sysfs_show_timer, bq2415x_sysfs_set_timer);
 
@@ -1522,8 +1346,6 @@ static struct attribute *bq2415x_sysfs_attributes[] = {
 	&dev_attr_otg_pin_enable.attr,
 	&dev_attr_stat_pin_enable.attr,
 
-	&dev_attr_reported_mode.attr,
-	&dev_attr_mode.attr,
 	&dev_attr_timer.attr,
 
 	&dev_attr_registers.attr,
@@ -1596,10 +1418,7 @@ static int bq2415x_probe(struct i2c_client *client,
 	bq->dev = &client->dev;
 	bq->chip = id->driver_data;
 	bq->name = name;
-	bq->mode = BQ2415X_MODE_OFF;
-	bq->reported_mode = BQ2415X_MODE_OFF;
 	bq->autotimer = 0;
-	bq->automode = 0;
 
 	memcpy(&bq->init_data, client->dev.platform_data,
 			sizeof(bq->init_data));
@@ -1624,19 +1443,10 @@ static int bq2415x_probe(struct i2c_client *client,
 		goto error_4;
 	}
 
-	if (bq->init_data.set_mode_hook) {
-		if (bq->init_data.set_mode_hook(
-				bq2415x_hook_function, bq)) {
-			bq->automode = 1;
-			bq2415x_set_mode(bq, bq->reported_mode);
-			dev_info(bq->dev, "automode enabled\n");
-		} else {
-			bq->automode = -1;
-			dev_info(bq->dev, "automode failed\n");
-		}
-	} else {
-		bq->automode = -1;
-		dev_info(bq->dev, "automode not supported\n");
+	bq->callbacks.set_current_limit = bq2415x_set_current_limit_cb;
+	bq->callbacks.set_mode = bq2415x_set_mode_cb;
+	if (bq->init_data.register_callbacks) {
+		bq->init_data.register_callbacks(&bq->callbacks);
 	}
 
 	INIT_DELAYED_WORK(&bq->work, bq2415x_timer_work);
@@ -1665,8 +1475,8 @@ static int bq2415x_remove(struct i2c_client *client)
 {
 	struct bq2415x_device *bq = i2c_get_clientdata(client);
 
-	if (bq->init_data.set_mode_hook)
-		bq->init_data.set_mode_hook(NULL, NULL);
+	if (bq->init_data.unregister_callbacks)
+		bq->init_data.unregister_callbacks();
 
 	bq2415x_sysfs_exit(bq);
 	bq2415x_power_supply_exit(bq);

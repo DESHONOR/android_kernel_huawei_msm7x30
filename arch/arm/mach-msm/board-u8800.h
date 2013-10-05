@@ -23,8 +23,8 @@ extern struct proccomm_regulator_platform_data msm7x30_proccomm_regulator_data;
 extern struct platform_device android_bat_device;
 enum chg_type;
 void batt_chg_connected(enum chg_type chg_type);
-enum bq2415x_mode;
-extern void (*bq24152_hook)(enum bq2415x_mode mode, void *data);
-extern void *bq24152_data;
+void batt_vbus_power(unsigned phy_info, int on);
+
+extern struct i2c_board_info bq24152_device;
 
 #endif

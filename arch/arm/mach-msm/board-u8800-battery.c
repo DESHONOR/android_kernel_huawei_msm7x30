@@ -12,6 +12,7 @@
  */
 
 #include <linux/err.h>
+#include <linux/i2c.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/android_battery.h>
 #include <linux/power/bq2415x_charger.h>
@@ -169,9 +170,25 @@ static int batt_get_capacity(void)
 }
 
 static struct android_bat_callbacks *android_bat_cb;
+static struct bq2415x_callbacks *bq24152_callbacks;
+
+static void bq24152_set_mode(enum bq2415x_mode mode)
+{
+	switch (mode) {
+	case BQ2415X_MODE_OFF:
+		wake_unlock(&charger_wakelock);
+		break;
+	case BQ2415X_MODE_CHARGE:
+	case BQ2415X_MODE_BOOST:
+		wake_lock(&charger_wakelock);
+		break;
+	}
+
+	if (bq24152_callbacks)
+		bq24152_callbacks->set_mode(bq24152_callbacks, mode);
+}
 
 static int chg_source;
-
 void batt_chg_connected(enum chg_type chg_type)
 {
 	int new_chg_source;
@@ -189,11 +206,22 @@ void batt_chg_connected(enum chg_type chg_type)
 		break;
 	}
 
-	if (!android_bat_cb || chg_source == new_chg_source)
-		return;
+	if (android_bat_cb)
+		android_bat_cb->charge_source_changed(android_bat_cb, new_chg_source);
 
-	android_bat_cb->charge_source_changed(android_bat_cb, new_chg_source);
 	chg_source = new_chg_source;
+}
+
+void batt_vbus_power(unsigned phy_info, int on)
+{
+	enum bq2415x_mode new_mode;
+
+	if (on)
+		new_mode = BQ2415X_MODE_BOOST;
+	else
+		new_mode = BQ2415X_MODE_OFF;
+
+	bq24152_set_mode(new_mode);
 }
 
 static void android_bat_register_callbacks(
@@ -209,30 +237,33 @@ static void android_bat_unregister_callbacks(void)
 
 static void android_bat_set_charging_current(int type)
 {
-	enum bq2415x_mode new_mode = BQ2415X_MODE_NONE;
+	int mA = 0;
 
 	switch (type) {
 	case CHARGE_SOURCE_AC:
-		new_mode = BQ2415X_MODE_DEDICATED_CHARGER;
+		mA = 1800;
 		break;
 	case CHARGE_SOURCE_USB:
-		new_mode = BQ2415X_MODE_HOST_CHARGER;
+		mA = 500;
 		break;
 	default:
 		return;
 	}
 
-	bq24152_hook(new_mode, bq24152_data);
+	if (bq24152_callbacks)
+		bq24152_callbacks->set_current_limit(bq24152_callbacks, mA);
 }
 
 static void android_bat_set_charging_enable(int enable)
 {
+	enum bq2415x_mode new_mode;
+
 	if (enable)
-		wake_lock(&charger_wakelock);
-	else {
-		bq24152_hook(BQ2415X_MODE_OFF, bq24152_data);
-		wake_unlock(&charger_wakelock);
-	}
+		new_mode = BQ2415X_MODE_CHARGE;
+	else
+		new_mode = BQ2415X_MODE_OFF;
+
+	bq24152_set_mode(new_mode);
 }
 
 static int android_bat_poll_charge_source(void)
@@ -279,6 +310,41 @@ struct platform_device android_bat_device = {
 	.dev	= {
 		.platform_data = &android_bat_pdata,
 	},
+};
+
+static void bq24152_status_changed(enum bq2415x_status status)
+{
+	if (status == BQ2415X_STATUS_CHARGE_DONE) {
+		if (android_bat_cb)
+			android_bat_cb->battery_set_full(android_bat_cb);
+	}
+}
+
+static void bq24152_register_callbacks(struct bq2415x_callbacks *callbacks)
+{
+	bq24152_callbacks = callbacks;
+}
+
+static void bq24152_unregister_callbacks(void)
+{
+	bq24152_callbacks = NULL;
+}
+
+static struct bq2415x_platform_data bq24152_platform_data = {
+	.current_limit = 100, /* mA */
+	.weak_battery_voltage = 3400, /* mV */
+	.battery_regulation_voltage = 4200, /* mV */
+	.charge_current = 950, /* mA */
+	.termination_current = 100, /* mA */
+	.resistor_sense = 68, /* m ohm */
+	.status_changed = bq24152_status_changed,
+	.register_callbacks = bq24152_register_callbacks,
+	.unregister_callbacks = bq24152_unregister_callbacks,
+};
+
+struct i2c_board_info bq24152_device = {
+	I2C_BOARD_INFO("bq24152", 0x6b),
+	.platform_data = &bq24152_platform_data,
 };
 
 static int __init battery_init(void)

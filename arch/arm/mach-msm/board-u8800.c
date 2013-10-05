@@ -2270,32 +2270,10 @@ static void __init msm_qsd_spi_init(void)
 	qsd_device_spi.dev.platform_data = &qsd_spi_pdata;
 }
 
-void (*bq24152_hook)(enum bq2415x_mode mode, void *data);
-void *bq24152_data;
-
 #ifdef CONFIG_USB_EHCI_MSM_72K
-static void msm_hsusb_vbus_power(unsigned phy_info, int on)
-{
-	static int vbus_is_on;
-
-	/* If VBUS is already on (or off), do nothing. */
-	if (unlikely(on == vbus_is_on))
-		return;
-
-	if (bq24152_hook != NULL && bq24152_data != NULL)
-	{
-		if (on)
-			bq24152_hook(BQ2415X_MODE_BOOST, bq24152_data);
-		else
-			bq24152_hook(BQ2415X_MODE_NONE, bq24152_data);
-	}
-
-	vbus_is_on = on;
-}
-
 static struct msm_usb_host_platform_data msm_usb_host_pdata = {
         .phy_info   = (USB_PHY_INTEGRATED | USB_PHY_MODEL_45NM),
-        .vbus_power = msm_hsusb_vbus_power,
+        .vbus_power = batt_vbus_power,
         .power_budget   = 200,
 };
 #endif
@@ -2355,7 +2333,7 @@ static int msm_hsusb_ldo_set_voltage(int mV)
 
 static struct msm_otg_platform_data msm_otg_pdata = {
 #ifdef CONFIG_USB_EHCI_MSM_72K
-	.vbus_power = msm_hsusb_vbus_power,
+	.vbus_power = batt_vbus_power,
 #endif
 	.pemp_level		 = PRE_EMPHASIS_WITH_20_PERCENT,
 	.cdr_autoreset		 = CDR_AUTO_RESET_DISABLE,
@@ -3208,32 +3186,7 @@ static struct platform_device i2c_dcdc_device = {
 	.dev.platform_data = &i2c_dcdc_pdata,
 };
 
-int bq24152_set_mode_hook(void (*hook)(enum bq2415x_mode mode, void *data),
-	void *data)
-{
-	bq24152_hook = hook;
-	bq24152_data = data;
-
-	/* Return non-zero to indicate automode support. */
-	return ~0;
-}
-
-static struct bq2415x_platform_data bq24152_platform_data = {
-	.current_limit = 100, /* mA */
-	.weak_battery_voltage = 3400, /* mV */
-	.battery_regulation_voltage = 4200, /* mV */
-	.charge_current = 950, /* mA */
-	.termination_current = 100, /* mA */
-	.resistor_sense = 68, /* m ohm */
-	.set_mode_hook = &bq24152_set_mode_hook,
-};
-
-static struct i2c_board_info bq24152_device[] = {
-	{
-		I2C_BOARD_INFO("bq24152", 0x6b),
-		.platform_data = &bq24152_platform_data,
-	},
-};
+static struct i2c_board_info i2c_dcdc_board_info[1];
 
 static char *msm_adc_device_names[] = {
 	"XO_ADC",
@@ -4702,8 +4655,9 @@ static void __init msm7x30_init(void)
 	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
 		ARRAY_SIZE(msm_camera_boardinfo));
 
-	i2c_register_board_info(5 /* I2C_DCDC ID */, bq24152_device,
-		ARRAY_SIZE(bq24152_device));
+	i2c_dcdc_board_info[0] = bq24152_device;
+	i2c_register_board_info(5 /* I2C_DCDC ID */, i2c_dcdc_board_info,
+		ARRAY_SIZE(i2c_dcdc_board_info));
 
 	bt_power_init();
 #ifdef CONFIG_I2C_SSBI

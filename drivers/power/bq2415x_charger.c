@@ -826,7 +826,6 @@ static void bq2415x_timer_error(struct bq2415x_device *bq, const char *msg)
 	bq->timer_error = msg;
 	sysfs_notify(&bq->charger.dev->kobj, NULL, "timer");
 	dev_err(bq->dev, "%s\n", msg);
-	bq2415x_set_autotimer(bq, 0);
 }
 
 /* delayed work function for auto resetting chip timer */
@@ -845,25 +844,25 @@ static void bq2415x_timer_work(struct work_struct *work)
 	ret = bq2415x_exec_command(bq, BQ2415X_TIMER_RESET);
 	if (ret < 0) {
 		bq2415x_timer_error(bq, "Resetting timer failed");
-		return;
+		goto reschedule;
 	}
 
 	status = bq2415x_exec_command(bq, BQ2415X_CHARGE_STATUS);
 	if (status < 0) {
 		bq2415x_timer_error(bq, "Unknown error");
-		return;
+		goto reschedule;
 	}
 
 	boost = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_STATUS);
 	if (boost < 0) {
 		bq2415x_timer_error(bq, "Unknown error");
-		return;
+		goto reschedule;
 	}
 
 	error = bq2415x_exec_command(bq, BQ2415X_FAULT_STATUS);
 	if (error < 0) {
 		bq2415x_timer_error(bq, "Unknown error");
-		return;
+		goto reschedule;
 	}
 
 	if (bq->last_status != status) {
@@ -902,21 +901,21 @@ static void bq2415x_timer_work(struct work_struct *work)
 		case 1: /* Overvoltage protection (chip fried) */
 			bq2415x_timer_error(bq,
 				"Overvoltage protection (chip fried)");
-			return;
+			break;
 		case 2: /* Overload */
 			bq2415x_timer_error(bq, "Overload");
-			return;
+			break;
 		case 4: /* Battery overvoltage protection */
 			bq2415x_timer_error(bq,
 				"Battery overvoltage protection");
-			return;
+			break;
 		case 5: /* Thermal shutdown (too hot) */
 			bq2415x_timer_error(bq,
 					"Thermal shutdown (too hot)");
-			return;
+			break;
 		case 7: /* N/A */
 			bq2415x_timer_error(bq, "Unknown error");
-			return;
+			break;
 		}
 	} else {
 		switch (error) {
@@ -940,18 +939,19 @@ static void bq2415x_timer_work(struct work_struct *work)
 		case 1: /* Overvoltage protection (chip fried) */
 			bq2415x_timer_error(bq,
 				"Overvoltage protection (chip fried)");
-			return;
+			break;
 		case 4: /* Battery overvoltage protection */
 			bq2415x_timer_error(bq,
 				"Battery overvoltage protection");
-			return;
+			break;
 		case 5: /* Thermal shutdown (too hot) */
 			bq2415x_timer_error(bq,
 				"Thermal shutdown (too hot)");
-			return;
+			break;
 		}
 	}
 
+reschedule:
 	schedule_delayed_work(&bq->work, BQ2415X_TIMER_TIMEOUT * HZ);
 }
 

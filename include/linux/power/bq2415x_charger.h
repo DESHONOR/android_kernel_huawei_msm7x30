@@ -82,6 +82,13 @@ enum bq2415x_mode {
 	BQ2415X_MODE_BOOST,		/* boost mode (charging disabled) */
 };
 
+enum bq2415x_status {
+	BQ2415X_STATUS_READY,		/* ready */
+	BQ2415X_STATUS_CHARGING,	/* charge in progress */
+	BQ2415X_STATUS_CHARGE_DONE,	/* charge done */
+	BQ2415X_STATUS_FAULT,		/* fault */
+};
+
 struct bq2415x_platform_data {
 	int current_limit;		/* mA */
 	int weak_battery_voltage;	/* mV */
@@ -91,6 +98,7 @@ struct bq2415x_platform_data {
 	int resistor_sense;		/* m ohm */
 	int (*set_mode_hook)(void (*hook)(enum bq2415x_mode mode, void *data),
 			     void *data);
+	void (*status_changed)(enum bq2415x_status status);
 };
 
 #endif

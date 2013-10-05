@@ -180,6 +180,7 @@ struct bq2415x_device {
 	int autotimer;	/* 1 - if driver automatically reset timer, 0 - not */
 	int automode;	/* 1 - enabled, 0 - disabled; -1 - not supported */
 	int id;
+	enum bq2415x_status last_status;
 };
 
 /* each registered chip must have unique id */
@@ -878,6 +879,7 @@ static void bq2415x_timer_work(struct work_struct *work)
 	int ret;
 	int error;
 	int boost;
+	int status;
 
 	if (!bq->autotimer)
 		return;
@@ -885,6 +887,12 @@ static void bq2415x_timer_work(struct work_struct *work)
 	ret = bq2415x_exec_command(bq, BQ2415X_TIMER_RESET);
 	if (ret < 0) {
 		bq2415x_timer_error(bq, "Resetting timer failed");
+		return;
+	}
+
+	status = bq2415x_exec_command(bq, BQ2415X_CHARGE_STATUS);
+	if (status < 0) {
+		bq2415x_timer_error(bq, "Unknown error");
 		return;
 	}
 
@@ -898,6 +906,26 @@ static void bq2415x_timer_work(struct work_struct *work)
 	if (error < 0) {
 		bq2415x_timer_error(bq, "Unknown error");
 		return;
+	}
+
+	if (bq->last_status != status) {
+		switch (status) {
+		case 0: /* Ready */
+			bq->last_status = BQ2415X_STATUS_READY;
+			break;
+		case 1: /* Charge in progress */
+			bq->last_status = BQ2415X_STATUS_CHARGING;
+			break;
+		case 2: /* Charge done */
+			bq->last_status = BQ2415X_STATUS_CHARGE_DONE;
+			break;
+		case 3: /* Fault */
+			bq->last_status = BQ2415X_STATUS_FAULT;
+			break;
+		}
+
+		if (bq->init_data.status_changed)
+			bq->init_data.status_changed(bq->last_status);
 	}
 
 	if (boost) {

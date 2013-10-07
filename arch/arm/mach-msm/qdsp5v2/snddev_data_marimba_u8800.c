@@ -135,7 +135,7 @@ static struct platform_device msm_imic_device = {
 };
 
 static struct adie_codec_action_unit ihs_stereo_rx_48KHz_osr256_actions[] =
-	HEADSET_STEREO_RX_LEGACY_48000_OSR_256;
+	HEADSET_STEREO_RX_CAPLESS_48000_OSR_256;
 
 static struct adie_codec_hwsetting_entry ihs_stereo_rx_settings[] = {
 	{
@@ -160,13 +160,13 @@ static struct snddev_icodec_data snddev_ihs_stereo_rx_data = {
 	.profile = &ihs_stereo_rx_profile,
 	.channel_mode = 2,
 	.default_sample_rate = 48000,
-	.pamp_on = NULL,
-	.pamp_off = NULL,
+	.pamp_on = msm_snddev_hsed_voltage_on,
+	.pamp_off = msm_snddev_hsed_voltage_off,
 	.property = SIDE_TONE_MASK,
-	.max_voice_rx_vol[VOC_NB_INDEX] = -700,
-	.min_voice_rx_vol[VOC_NB_INDEX] = -2200,
-	.max_voice_rx_vol[VOC_WB_INDEX] = -900,
-	.min_voice_rx_vol[VOC_WB_INDEX] = -2400
+	.max_voice_rx_vol[VOC_NB_INDEX] = -500,
+	.min_voice_rx_vol[VOC_NB_INDEX] = -2000,
+	.max_voice_rx_vol[VOC_WB_INDEX] = -700,
+	.min_voice_rx_vol[VOC_WB_INDEX] = -2200
 };
 
 static struct platform_device msm_ihs_stereo_rx_device = {

@@ -224,6 +224,12 @@ void batt_vbus_power(unsigned phy_info, int on)
 	bq24152_set_mode(new_mode);
 }
 
+void batt_vbus_draw(unsigned ma)
+{
+	if (bq24152_callbacks)
+		bq24152_callbacks->set_current_limit(bq24152_callbacks, ma);
+}
+
 static void android_bat_register_callbacks(
 	struct android_bat_callbacks *callbacks)
 {
@@ -233,25 +239,6 @@ static void android_bat_register_callbacks(
 static void android_bat_unregister_callbacks(void)
 {
 	android_bat_cb = NULL;
-}
-
-static void android_bat_set_charging_current(int type)
-{
-	int mA = 0;
-
-	switch (type) {
-	case CHARGE_SOURCE_AC:
-		mA = 1800;
-		break;
-	case CHARGE_SOURCE_USB:
-		mA = 500;
-		break;
-	default:
-		return;
-	}
-
-	if (bq24152_callbacks)
-		bq24152_callbacks->set_current_limit(bq24152_callbacks, mA);
 }
 
 static void android_bat_set_charging_enable(int enable)
@@ -291,7 +278,6 @@ static int android_bat_get_voltage_now(void)
 static struct android_bat_platform_data android_bat_pdata = {
 	.register_callbacks	= android_bat_register_callbacks,
 	.unregister_callbacks	= android_bat_unregister_callbacks,
-	.set_charging_current	= android_bat_set_charging_current,
 	.set_charging_enable	= android_bat_set_charging_enable,
 	.poll_charge_source	= android_bat_poll_charge_source,
 	.get_capacity		= android_bat_get_capacity,

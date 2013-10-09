@@ -24,6 +24,7 @@ extern struct platform_device android_bat_device;
 enum chg_type;
 void batt_chg_connected(enum chg_type chg_type);
 void batt_vbus_power(unsigned phy_info, int on);
+void batt_vbus_draw(unsigned ma);
 
 extern struct i2c_board_info bq24152_device;
 

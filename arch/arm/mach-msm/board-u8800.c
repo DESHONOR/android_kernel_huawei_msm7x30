@@ -2340,6 +2340,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.drv_ampl		 = HS_DRV_AMPLITUDE_DEFAULT,
 	.se1_gating		 = SE1_GATING_DISABLE,
 	.chg_connected		 = batt_chg_connected,
+	.chg_vbus_draw		 = batt_vbus_draw,
 	.ldo_enable		 = msm_hsusb_ldo_enable,
 	.ldo_init		 = msm_hsusb_ldo_init,
 	.ldo_set_voltage	 = msm_hsusb_ldo_set_voltage,

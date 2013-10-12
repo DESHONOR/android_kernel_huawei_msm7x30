@@ -96,7 +96,6 @@ static enum power_supply_property android_power_props[] = {
 
 static DEFINE_MUTEX(android_bat_state_lock);
 
-static void android_bat_update_data(struct android_bat_data *battery);
 static int android_bat_enable_charging(struct android_bat_data *battery,
 					bool enable);
 
@@ -140,7 +139,8 @@ static int android_bat_get_property(struct power_supply *ps,
 		val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		android_bat_update_data(battery);
+		if (battery->pdata->get_voltage_now)
+			battery->batt_vcell = battery->pdata->get_voltage_now();
 		val->intval = battery->batt_vcell;
 		if (val->intval == -1)
 			return -EINVAL;
@@ -154,7 +154,8 @@ static int android_bat_get_property(struct power_supply *ps,
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		android_bat_update_data(battery);
+		if (battery->pdata->get_current_now)
+			battery->pdata->get_current_now(&battery->batt_current);
 		val->intval = battery->batt_current;
 		break;
 	default:

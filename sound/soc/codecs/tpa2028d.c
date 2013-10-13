@@ -177,7 +177,9 @@ tpa2028d_comp_rate_show(struct device *dev, struct device_attribute *attr,   cha
 	struct audio_amp_platform_data *pdata = amp_data->pdata;
 	char val = 0;
 
+	set_amp_gain(SPK_ON);
 	ReadI2C(AGC2_CONTROL, &val);
+	set_amp_gain(SPK_OFF);
 
 	D("[tpa2028d_comp_rate_show] val : %x \n",val);
 
@@ -202,7 +204,9 @@ tpa2028d_out_lim_show(struct device *dev, struct device_attribute *attr,   char 
 	struct audio_amp_platform_data *pdata = amp_data->pdata;
 	char val=0;
 
+	set_amp_gain(SPK_ON);
 	ReadI2C(AGC1_CONTROL, &val);
+	set_amp_gain(SPK_OFF);
 
 	D("[tpa2028d_out_lim_show] val : %x \n",val);
 
@@ -228,7 +232,9 @@ tpa2028d_fixed_gain_show(struct device *dev, struct device_attribute *attr,   ch
 	struct audio_amp_platform_data *pdata = amp_data->pdata;
 	char val=0;
 
+	set_amp_gain(SPK_ON);
 	ReadI2C(AGC_FIXED_GAIN_CONTROL, &val);
+	set_amp_gain(SPK_OFF);
 
 	D("[tpa2028d_fixed_gain_show] val : %x \n",val);
 

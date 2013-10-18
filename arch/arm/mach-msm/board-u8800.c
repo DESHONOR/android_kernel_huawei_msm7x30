@@ -4941,6 +4941,13 @@ static void __init msm7x30_fixup(struct tag *tags, char **cmdline,
 	}
 }
 
+#define ATAG_MEM_OSBL	0x5441000C
+static int __init parse_tag_memosbl(const struct tag *tag)
+{
+	return arm_add_memory(tag->u.mem.start, tag->u.mem.size);
+}
+__tagtable(ATAG_MEM_OSBL, parse_tag_memosbl);
+
 MACHINE_START(HUAWEI_U8800, "HUAWEI U8800")
 	.atag_offset = 0x100,
 	.map_io = msm7x30_map_io,

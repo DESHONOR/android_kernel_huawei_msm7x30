@@ -741,7 +741,6 @@ static int bq2415x_set_defaults(struct bq2415x_device *bq)
 		bq2415x_exec_command(bq, BQ2415X_CHARGE_TERMINATION_ENABLE);
 	}
 
-	bq2415x_exec_command(bq, BQ2415X_CHARGER_ENABLE);
 	return 0;
 }
 

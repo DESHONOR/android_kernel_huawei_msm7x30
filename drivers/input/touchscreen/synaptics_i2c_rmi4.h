@@ -28,11 +28,11 @@
 
 #include <linux/version.h>
 
-#ifdef CONFIG_FB
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#elif defined CONFIG_FB
 #include <linux/notifier.h>
 #include <linux/fb.h>
-#elif defined CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
 #endif
 
 #define PDT_PROPS (0x00EF)
@@ -228,11 +228,11 @@ struct synaptics_rmi4_data {
 			unsigned char *data, unsigned short length);
 	int (*irq_enable)(struct synaptics_rmi4_data *rmi4_data, bool enable);
 	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data);
-#ifdef CONFIG_FB
-	struct notifier_block fb_notif;
-#else
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
+#else
+#ifdef CONFIG_FB
+	struct notifier_block fb_notif;
 #endif
 #endif
 };

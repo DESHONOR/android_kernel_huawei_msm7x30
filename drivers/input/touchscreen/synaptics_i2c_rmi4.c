@@ -114,13 +114,13 @@ static ssize_t synaptics_rmi4_full_pm_cycle_show(struct device *dev,
 static ssize_t synaptics_rmi4_full_pm_cycle_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
-#if defined(CONFIG_FB)
-static int fb_notifier_callback(struct notifier_block *self,
-				unsigned long event, void *data);
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_HAS_EARLYSUSPEND)
 static void synaptics_rmi4_early_suspend(struct early_suspend *h);
 
 static void synaptics_rmi4_late_resume(struct early_suspend *h);
+#elif defined(CONFIG_FB)
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data);
 #endif
 #endif
 
@@ -288,7 +288,17 @@ static ssize_t synaptics_rmi4_full_pm_cycle_store(struct device *dev,
 	return count;
 }
 
-#ifdef CONFIG_FB
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
+{
+	rmi4_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
+	rmi4_data->early_suspend.suspend = synaptics_rmi4_early_suspend;
+	rmi4_data->early_suspend.resume = synaptics_rmi4_late_resume;
+	register_early_suspend(&rmi4_data->early_suspend);
+
+	return;
+}
+#elif defined CONFIG_FB
 static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval = 0;
@@ -299,16 +309,6 @@ static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
 	if (retval)
 		dev_err(&rmi4_data->i2c_client->dev,
 			"Unable to register fb_notifier: %d\n", retval);
-	return;
-}
-#elif defined CONFIG_HAS_EARLYSUSPEND
-static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
-{
-	rmi4_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	rmi4_data->early_suspend.suspend = synaptics_rmi4_early_suspend;
-	rmi4_data->early_suspend.resume = synaptics_rmi4_late_resume;
-	register_early_suspend(&rmi4_data->early_suspend);
-
 	return;
 }
 #else
@@ -2498,27 +2498,7 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 	return;
 }
 
-#if defined(CONFIG_FB)
-static int fb_notifier_callback(struct notifier_block *self,
-				unsigned long event, void *data)
-{
-	struct fb_event *evdata = data;
-	int *blank;
-	struct synaptics_rmi4_data *rmi4_data =
-		container_of(self, struct synaptics_rmi4_data, fb_notif);
-
-	if (evdata && evdata->data && event == FB_EVENT_BLANK &&
-		rmi4_data && rmi4_data->i2c_client) {
-		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK)
-			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-		else if (*blank == FB_BLANK_POWERDOWN)
-			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
-	}
-
-	return 0;
-}
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_HAS_EARLYSUSPEND)
  /**
  * synaptics_rmi4_early_suspend()
  *
@@ -2570,6 +2550,26 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
 	}
 
 	return;
+}
+#elif defined(CONFIG_FB)
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(self, struct synaptics_rmi4_data, fb_notif);
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK &&
+		rmi4_data && rmi4_data->i2c_client) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_UNBLANK)
+			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
+		else if (*blank == FB_BLANK_POWERDOWN)
+			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
+	}
+
+	return 0;
 }
 #endif
 

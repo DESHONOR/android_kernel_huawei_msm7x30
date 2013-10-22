@@ -626,6 +626,8 @@ static __devinit int android_bat_probe(struct platform_device *pdev)
 	wake_lock_init(&battery->charger_wake_lock, WAKE_LOCK_SUSPEND,
 			"android-chargerdetect");
 
+	android_bat_update_data(battery);
+
 	ret = power_supply_register(&pdev->dev, &battery->psy_bat);
 	if (ret) {
 		dev_err(battery->dev, "%s: failed to register psy_bat\n",

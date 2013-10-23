@@ -2059,6 +2059,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	struct synaptics_rmi4_device_info *rmi;
 	struct synaptics_rmi4_platform_data *platform_data =
 			client->dev.platform_data;
+	int max_x, max_y;
 
 	if (!i2c_check_functionality(client->adapter,
 			I2C_FUNC_SMBUS_BYTE_DATA)) {
@@ -2214,12 +2215,24 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_reset_gpio_dir;
 	}
 
+	/* scale the max coordinate so it matches display max */
+	if (platform_data->disp_x && platform_data->panel_x)
+		max_x = (rmi4_data->sensor_max_x * 1000 / platform_data->panel_x)
+			* platform_data->disp_x / 1000;
+	else
+		max_x = rmi4_data->sensor_max_x;
+	if (platform_data->disp_y && platform_data->panel_y)
+		max_y = (rmi4_data->sensor_max_y * 1000 / platform_data->panel_y)
+			* platform_data->disp_y / 1000;
+	else
+		max_y = rmi4_data->sensor_max_y;
+
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_POSITION_X, 0,
-			rmi4_data->sensor_max_x, 0, 0);
+			max_x, 0, 0);
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_POSITION_Y, 0,
-			rmi4_data->sensor_max_y, 0, 0);
+			max_y, 0, 0);
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_PRESSURE, 0, 255, 0, 0);
 #ifdef REPORT_2D_W

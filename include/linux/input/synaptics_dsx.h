@@ -55,6 +55,8 @@ struct synaptics_rmi4_platform_data {
 	unsigned reset_gpio;
 	unsigned panel_x;
 	unsigned panel_y;
+	unsigned disp_x;
+	unsigned disp_y;
 	const char *fw_image_name;
 	int (*gpio_config)(unsigned gpio, bool configure);
 	struct synaptics_rmi4_capacitance_button_map *capacitance_button_map;

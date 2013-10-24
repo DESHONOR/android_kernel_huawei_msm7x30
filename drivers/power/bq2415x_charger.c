@@ -717,11 +717,8 @@ static int bq2415x_get_termination_current(struct bq2415x_device *bq)
 /* set default value of property */
 #define bq2415x_set_default_value(bq, prop) \
 	do { \
-		int ret = 0; \
 		if (bq->init_data.prop != -1) \
-			ret = bq2415x_set_##prop(bq, bq->init_data.prop); \
-		if (ret < 0) \
-			return ret; \
+			bq2415x_set_##prop(bq, bq->init_data.prop); \
 	} while (0)
 
 /* set default values of all properties */
@@ -752,6 +749,9 @@ static void bq2415x_set_autotimer(struct bq2415x_device *bq, int state);
 static int bq2415x_set_mode(struct bq2415x_device *bq, enum bq2415x_mode mode)
 {
 	int ret = 0;
+
+	bq2415x_set_default_value(bq, weak_battery_voltage);
+	bq2415x_set_default_value(bq, battery_regulation_voltage);
 
 	switch (mode) {
 	case BQ2415X_MODE_OFF:
@@ -786,6 +786,9 @@ static void bq2415x_set_current_limit_cb(struct bq2415x_callbacks *ptr, int mA)
 	dev_dbg(bq->dev, "set_current_limit_cb %d\n", mA);
 
 	bq2415x_set_current_limit(bq, mA);
+
+	bq2415x_set_default_value(bq, weak_battery_voltage);
+	bq2415x_set_default_value(bq, battery_regulation_voltage);
 }
 
 static void bq2415x_set_mode_cb(struct bq2415x_callbacks *ptr,

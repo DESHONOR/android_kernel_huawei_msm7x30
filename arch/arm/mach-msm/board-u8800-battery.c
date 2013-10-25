@@ -301,8 +301,9 @@ struct platform_device android_bat_device = {
 static void bq24152_status_changed(enum bq2415x_status status)
 {
 	if (status == BQ2415X_STATUS_CHARGE_DONE) {
-		if (android_bat_cb)
-			android_bat_cb->battery_set_full(android_bat_cb);
+		pr_info("board-u8800-battery: Battery Charged\n");
+		//if (android_bat_cb)
+		//	android_bat_cb->battery_set_full(android_bat_cb);
 	}
 }
 

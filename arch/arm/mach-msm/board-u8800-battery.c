@@ -174,18 +174,14 @@ static struct bq2415x_callbacks *bq24152_callbacks;
 
 static void bq24152_set_mode(enum bq2415x_mode mode)
 {
-	switch (mode) {
-	case BQ2415X_MODE_OFF:
-		wake_unlock(&charger_wakelock);
-		break;
-	case BQ2415X_MODE_CHARGE:
-	case BQ2415X_MODE_BOOST:
+	if (mode != BQ2415X_MODE_OFF)
 		wake_lock(&charger_wakelock);
-		break;
-	}
 
 	if (bq24152_callbacks)
 		bq24152_callbacks->set_mode(bq24152_callbacks, mode);
+
+	if (mode == BQ2415X_MODE_OFF)
+		wake_unlock(&charger_wakelock);
 }
 
 static int chg_source;

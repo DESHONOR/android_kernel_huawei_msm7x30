@@ -179,6 +179,7 @@ struct bq2415x_device {
 	int autotimer;	/* 1 - if driver automatically reset timer, 0 - not */
 	int id;
 	enum bq2415x_status last_status;
+	enum bq2415x_mode mode;
 };
 
 /* each registered chip must have unique id */
@@ -734,8 +735,8 @@ static int bq2415x_get_termination_current(struct bq2415x_device *bq)
 /* set default values of all properties */
 static int bq2415x_set_defaults(struct bq2415x_device *bq)
 {
-	bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_DISABLE);
-	bq2415x_exec_command(bq, BQ2415X_CHARGER_DISABLE);
+	bq2415x_reset_chip(bq);
+
 	bq2415x_exec_command(bq, BQ2415X_CHARGE_TERMINATION_DISABLE);
 
 	bq2415x_set_default_value(bq, current_limit);
@@ -760,29 +761,30 @@ static int bq2415x_set_mode(struct bq2415x_device *bq, enum bq2415x_mode mode)
 {
 	int ret = 0;
 
-	bq2415x_set_default_value(bq, weak_battery_voltage);
-	bq2415x_set_default_value(bq, battery_regulation_voltage);
+	bq2415x_set_defaults(bq);
 
 	switch (mode) {
 	case BQ2415X_MODE_OFF:
-		ret = bq2415x_exec_command(bq, BQ2415X_CHARGER_DISABLE);
-		ret = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_DISABLE);
+		bq2415x_exec_command(bq, BQ2415X_CHARGER_DISABLE);
+		bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_DISABLE);
 		ret = bq2415x_exec_command(bq, BQ2415X_HIGH_IMPEDANCE_ENABLE);
 		break;
 	case BQ2415X_MODE_CHARGE:
-		ret = bq2415x_exec_command(bq, BQ2415X_HIGH_IMPEDANCE_DISABLE);
-		ret = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_DISABLE);
+		bq2415x_exec_command(bq, BQ2415X_HIGH_IMPEDANCE_DISABLE);
+		bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_DISABLE);
 		ret = bq2415x_exec_command(bq, BQ2415X_CHARGER_ENABLE);
 		break;
 	case BQ2415X_MODE_BOOST:
-		ret = bq2415x_exec_command(bq, BQ2415X_HIGH_IMPEDANCE_DISABLE);
-		ret = bq2415x_exec_command(bq, BQ2415X_CHARGER_DISABLE);
+		bq2415x_exec_command(bq, BQ2415X_HIGH_IMPEDANCE_DISABLE);
+		bq2415x_exec_command(bq, BQ2415X_CHARGER_DISABLE);
 		ret = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_ENABLE);
 		break;
 	}
 
 	/* Safe to turn off safety timer when charger is in turned off mode. */
 	bq2415x_set_autotimer(bq, (mode != BQ2415X_MODE_OFF));
+
+	bq->mode = mode;
 
 	return ret;
 
@@ -796,9 +798,6 @@ static void bq2415x_set_current_limit_cb(struct bq2415x_callbacks *ptr, int mA)
 	dev_dbg(bq->dev, "set_current_limit_cb %d\n", mA);
 
 	bq2415x_set_current_limit(bq, mA);
-
-	bq2415x_set_default_value(bq, weak_battery_voltage);
-	bq2415x_set_default_value(bq, battery_regulation_voltage);
 }
 
 static void bq2415x_set_mode_cb(struct bq2415x_callbacks *ptr,
@@ -909,6 +908,7 @@ static void bq2415x_timer_work(struct work_struct *work)
 			break;
 		case 6: /* Timer expired */
 			dev_err(bq->dev, "Timer expired\n");
+			bq2415x_set_mode(bq, bq->mode);
 			break;
 		case 3: /* Battery voltage too low */
 			dev_err(bq->dev, "Battery voltage to low\n");
@@ -947,9 +947,11 @@ static void bq2415x_timer_work(struct work_struct *work)
 			break;
 		case 6: /* Timer expired */
 			dev_err(bq->dev, "Timer expired\n");
+			bq2415x_set_mode(bq, bq->mode);
 			break;
 		case 7: /* No battery */
 			dev_err(bq->dev, "No battery\n");
+			bq2415x_set_mode(bq, bq->mode);
 			break;
 
 		/* Fatal errors, disable and reset chip */
@@ -1440,8 +1442,6 @@ static int bq2415x_probe(struct i2c_client *client,
 	memcpy(&bq->init_data, client->dev.platform_data,
 			sizeof(bq->init_data));
 
-	bq2415x_reset_chip(bq);
-
 	ret = bq2415x_power_supply_init(bq);
 	if (ret) {
 		dev_err(bq->dev, "failed to register power supply: %d\n", ret);
@@ -1454,9 +1454,9 @@ static int bq2415x_probe(struct i2c_client *client,
 		goto error_3;
 	}
 
-	ret = bq2415x_set_defaults(bq);
+	ret = bq2415x_set_mode(bq, BQ2415X_MODE_OFF);
 	if (ret) {
-		dev_err(bq->dev, "failed to set default values: %d\n", ret);
+		dev_err(bq->dev, "failed to set mode to off: %d\n", ret);
 		goto error_4;
 	}
 
@@ -1497,7 +1497,7 @@ static int bq2415x_remove(struct i2c_client *client)
 	bq2415x_sysfs_exit(bq);
 	bq2415x_power_supply_exit(bq);
 
-	bq2415x_reset_chip(bq);
+	bq2415x_set_mode(bq, BQ2415X_MODE_OFF);
 
 	mutex_lock(&bq2415x_id_mutex);
 	idr_remove(&bq2415x_id, bq->id);
@@ -1530,9 +1530,10 @@ MODULE_DEVICE_TABLE(i2c, bq2415x_i2c_id_table);
 static void bq2415x_shutdown(struct i2c_client *client)
 {
 	struct bq2415x_device *bq = i2c_get_clientdata(client);
-	bq2415x_reset_chip(bq);
 
-	dev_info(bq->dev, "chip reset\n");
+	bq2415x_set_mode(bq, BQ2415X_MODE_OFF);
+
+	dev_info(bq->dev, "chip reset/off\n");
 }
 
 static struct i2c_driver bq2415x_driver = {

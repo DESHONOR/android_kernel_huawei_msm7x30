@@ -173,7 +173,6 @@ struct bq2415x_device {
 	struct power_supply charger;
 	struct delayed_work work;
 	enum bq2415x_chip chip;
-	const char *timer_error;
 	char *model;
 	char *name;
 	int autotimer;	/* 1 - if driver automatically reset timer, 0 - not */
@@ -543,7 +542,6 @@ static void bq2415x_reset_chip(struct bq2415x_device *bq)
 	bq2415x_i2c_write(bq, BQ2415X_REG_VOLTAGE, BQ2415X_RESET_VOLTAGE);
 	bq2415x_i2c_write(bq, BQ2415X_REG_CONTROL, BQ2415X_RESET_CONTROL);
 	bq2415x_i2c_write(bq, BQ2415X_REG_STATUS, BQ2415X_RESET_STATUS);
-	bq->timer_error = NULL;
 }
 
 /**** properties functions ****/
@@ -828,20 +826,11 @@ static void bq2415x_set_autotimer(struct bq2415x_device *bq, int state)
 	if (state) {
 		schedule_delayed_work(&bq->work, BQ2415X_TIMER_TIMEOUT * HZ);
 		bq2415x_exec_command(bq, BQ2415X_TIMER_RESET);
-		bq->timer_error = NULL;
 	} else {
 		cancel_delayed_work_sync(&bq->work);
 	}
 
 	mutex_unlock(&bq2415x_timer_mutex);
-}
-
-/* called by bq2415x_timer_work on timer error */
-static void bq2415x_timer_error(struct bq2415x_device *bq, const char *msg)
-{
-	bq->timer_error = msg;
-	sysfs_notify(&bq->charger.dev->kobj, NULL, "timer");
-	dev_err(bq->dev, "%s\n", msg);
 }
 
 /* delayed work function for auto resetting chip timer */
@@ -859,25 +848,25 @@ static void bq2415x_timer_work(struct work_struct *work)
 
 	ret = bq2415x_exec_command(bq, BQ2415X_TIMER_RESET);
 	if (ret < 0) {
-		bq2415x_timer_error(bq, "Resetting timer failed");
+		dev_err(bq->dev, "Resetting timer failed\n");
 		goto reschedule;
 	}
 
 	status = bq2415x_exec_command(bq, BQ2415X_CHARGE_STATUS);
 	if (status < 0) {
-		bq2415x_timer_error(bq, "Unknown error");
+		dev_err(bq->dev, "Unknown error\n");
 		goto reschedule;
 	}
 
 	boost = bq2415x_exec_command(bq, BQ2415X_BOOST_MODE_STATUS);
 	if (boost < 0) {
-		bq2415x_timer_error(bq, "Unknown error");
+		dev_err(bq->dev, "Unknown error\n");
 		goto reschedule;
 	}
 
 	error = bq2415x_exec_command(bq, BQ2415X_FAULT_STATUS);
 	if (error < 0) {
-		bq2415x_timer_error(bq, "Unknown error");
+		dev_err(bq->dev, "Unknown error\n");
 		goto reschedule;
 	}
 
@@ -916,22 +905,20 @@ static void bq2415x_timer_work(struct work_struct *work)
 
 		/* Fatal errors, disable and reset chip */
 		case 1: /* Overvoltage protection (chip fried) */
-			bq2415x_timer_error(bq,
-				"Overvoltage protection (chip fried)");
+			dev_err(bq->dev,
+				"Overvoltage protection (chip fried)\n");
 			break;
 		case 2: /* Overload */
-			bq2415x_timer_error(bq, "Overload");
+			dev_err(bq->dev, "Overload\n");
 			break;
 		case 4: /* Battery overvoltage protection */
-			bq2415x_timer_error(bq,
-				"Battery overvoltage protection");
+			dev_err(bq->dev, "Battery overvoltage protection\n");
 			break;
 		case 5: /* Thermal shutdown (too hot) */
-			bq2415x_timer_error(bq,
-					"Thermal shutdown (too hot)");
+			dev_err(bq->dev, "Thermal shutdown (too hot)\n");
 			break;
 		case 7: /* N/A */
-			bq2415x_timer_error(bq, "Unknown error");
+			dev_err(bq->dev, "Unknown error\n");
 			break;
 		}
 	} else {
@@ -956,16 +943,14 @@ static void bq2415x_timer_work(struct work_struct *work)
 
 		/* Fatal errors, disable and reset chip */
 		case 1: /* Overvoltage protection (chip fried) */
-			bq2415x_timer_error(bq,
-				"Overvoltage protection (chip fried)");
+			dev_err(bq->dev,
+				"Overvoltage protection (chip fried)\n");
 			break;
 		case 4: /* Battery overvoltage protection */
-			bq2415x_timer_error(bq,
-				"Battery overvoltage protection");
+			dev_err(bq->dev, "Battery overvoltage protection\n");
 			break;
 		case 5: /* Thermal shutdown (too hot) */
-			bq2415x_timer_error(bq,
-				"Thermal shutdown (too hot)");
+			dev_err(bq->dev, "Thermal shutdown (too hot)\n");
 			break;
 		}
 	}
@@ -1129,9 +1114,6 @@ static ssize_t bq2415x_sysfs_show_timer(struct device *dev,
 	struct power_supply *psy = dev_get_drvdata(dev);
 	struct bq2415x_device *bq = container_of(psy, struct bq2415x_device,
 						 charger);
-
-	if (bq->timer_error)
-		return sprintf(buf, "%s\n", bq->timer_error);
 
 	if (bq->autotimer)
 		return sprintf(buf, "auto\n");

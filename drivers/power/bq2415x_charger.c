@@ -561,6 +561,8 @@ static int bq2415x_set_current_limit(struct bq2415x_device *bq, int mA)
 	else
 		val = 3;
 
+	bq->init_data.current_limit = mA;
+
 	return bq2415x_i2c_write_mask(bq, BQ2415X_REG_CONTROL, val,
 			BQ2415X_MASK_LIMIT, BQ2415X_SHIFT_LIMIT);
 }
@@ -600,6 +602,8 @@ static int bq2415x_set_weak_battery_voltage(struct bq2415x_device *bq, int mV)
 	else
 		val = 3;
 
+	bq->init_data.weak_battery_voltage = mV;
+
 	return bq2415x_i2c_write_mask(bq, BQ2415X_REG_CONTROL, val,
 			BQ2415X_MASK_VLOWV, BQ2415X_SHIFT_VLOWV);
 }
@@ -631,6 +635,8 @@ static int bq2415x_set_battery_regulation_voltage(struct bq2415x_device *bq,
 	else if (val > 47)
 		return -EINVAL;
 
+	bq->init_data.battery_regulation_voltage = mV;
+
 	return bq2415x_i2c_write_mask(bq, BQ2415X_REG_VOLTAGE, val,
 			BQ2415X_MASK_VO, BQ2415X_SHIFT_VO);
 }
@@ -659,6 +665,8 @@ static int bq2415x_set_charge_current(struct bq2415x_device *bq, int mA)
 		val = 0;
 	else if (val > 7)
 		val = 7;
+
+	bq->init_data.charge_current = mA;
 
 	return bq2415x_i2c_write_mask(bq, BQ2415X_REG_CURRENT, val,
 			BQ2415X_MASK_VI_CHRG | BQ2415X_MASK_RESET,
@@ -693,6 +701,8 @@ static int bq2415x_set_termination_current(struct bq2415x_device *bq, int mA)
 		val = 0;
 	else if (val > 7)
 		val = 7;
+
+	bq->init_data.termination_current = mA;
 
 	return bq2415x_i2c_write_mask(bq, BQ2415X_REG_CURRENT, val,
 			BQ2415X_MASK_VI_TERM | BQ2415X_MASK_RESET,

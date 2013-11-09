@@ -18,9 +18,6 @@
 #include <linux/delay.h>
 #include <linux/bootmem.h>
 #include <linux/io.h>
-#ifdef CONFIG_SPI_QSD
-#include <linux/spi/spi.h>
-#endif
 #include <linux/msm_ssbi.h>
 #include <linux/mfd/pmic8058.h>
 #include <linux/mfd/marimba.h>
@@ -42,7 +39,6 @@
 #include <mach/memory.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_hsusb.h>
-#include <mach/msm_spi.h>
 #include <mach/qdsp5v2/msm_lpa.h>
 #include <mach/dma.h>
 #include <linux/android_pmem.h>
@@ -2150,120 +2146,6 @@ static struct msm_pm_boot_platform_data msm_pm_boot_pdata __initdata = {
 	.v_addr = (uint32_t *)PAGE_OFFSET,
 };
 
-static struct resource qsd_spi_resources[] = {
-	{
-		.name   = "spi_irq_in",
-		.start	= INT_SPI_INPUT,
-		.end	= INT_SPI_INPUT,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name   = "spi_irq_out",
-		.start	= INT_SPI_OUTPUT,
-		.end	= INT_SPI_OUTPUT,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name   = "spi_irq_err",
-		.start	= INT_SPI_ERROR,
-		.end	= INT_SPI_ERROR,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name   = "spi_base",
-		.start	= 0xA8000000,
-		.end	= 0xA8000000 + SZ_4K - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.name   = "spidm_channels",
-		.flags  = IORESOURCE_DMA,
-	},
-	{
-		.name   = "spidm_crci",
-		.flags  = IORESOURCE_DMA,
-	},
-};
-
-#define AMDH0_BASE_PHYS		0xAC200000
-#define ADMH0_GP_CTL		(ct_adm_base + 0x3D8)
-static int msm_qsd_spi_dma_config(void)
-{
-	void __iomem *ct_adm_base = 0;
-	u32 spi_mux = 0;
-	int ret = 0;
-
-	ct_adm_base = ioremap(AMDH0_BASE_PHYS, PAGE_SIZE);
-	if (!ct_adm_base) {
-		pr_err("%s: Could not remap %x\n", __func__, AMDH0_BASE_PHYS);
-		return -ENOMEM;
-	}
-
-	spi_mux = (ioread32(ADMH0_GP_CTL) & (0x3 << 12)) >> 12;
-
-	qsd_spi_resources[4].start  = DMOV_USB_CHAN;
-	qsd_spi_resources[4].end    = DMOV_TSIF_CHAN;
-
-	switch (spi_mux) {
-	case (1):
-		qsd_spi_resources[5].start  = DMOV_HSUART1_RX_CRCI;
-		qsd_spi_resources[5].end    = DMOV_HSUART1_TX_CRCI;
-		break;
-	case (2):
-		qsd_spi_resources[5].start  = DMOV_HSUART2_RX_CRCI;
-		qsd_spi_resources[5].end    = DMOV_HSUART2_TX_CRCI;
-		break;
-	case (3):
-		qsd_spi_resources[5].start  = DMOV_CE_OUT_CRCI;
-		qsd_spi_resources[5].end    = DMOV_CE_IN_CRCI;
-		break;
-	default:
-		ret = -ENOENT;
-	}
-
-	iounmap(ct_adm_base);
-
-	return ret;
-}
-
-static struct platform_device qsd_device_spi = {
-	.name		= "spi_qsd",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(qsd_spi_resources),
-	.resource	= qsd_spi_resources,
-};
-
-static struct msm_gpio qsd_spi_gpio_config_data[] = {
-	{ GPIO_CFG(45, 1, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "spi_clk" },
-	{ GPIO_CFG(46, 1, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "spi_cs0" },
-	{ GPIO_CFG(47, 1, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_8MA), "spi_mosi" },
-	{ GPIO_CFG(48, 1, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "spi_miso" },
-};
-
-static int msm_qsd_spi_gpio_config(void)
-{
-	return msm_gpios_request_enable(qsd_spi_gpio_config_data,
-		ARRAY_SIZE(qsd_spi_gpio_config_data));
-}
-
-static void msm_qsd_spi_gpio_release(void)
-{
-	msm_gpios_disable_free(qsd_spi_gpio_config_data,
-		ARRAY_SIZE(qsd_spi_gpio_config_data));
-}
-
-static struct msm_spi_platform_data qsd_spi_pdata = {
-	.max_clock_speed = 26331429,
-	.gpio_config  = msm_qsd_spi_gpio_config,
-	.gpio_release = msm_qsd_spi_gpio_release,
-	.dma_config = msm_qsd_spi_dma_config,
-};
-
-static void __init msm_qsd_spi_init(void)
-{
-	qsd_device_spi.dev.platform_data = &qsd_spi_pdata;
-}
-
 #ifdef CONFIG_USB_EHCI_MSM_72K
 static struct msm_usb_host_platform_data msm_usb_host_pdata = {
         .phy_info   = (USB_PHY_INTEGRATED | USB_PHY_MODEL_45NM),
@@ -3227,7 +3109,6 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_USB_G_ANDROID
 	&android_usb_device,
 #endif
-	&qsd_device_spi,
 
 #ifdef CONFIG_MSM_SSBI
 	&msm_device_ssbi_pmic1,
@@ -4568,7 +4449,6 @@ static void __init msm7x30_init(void)
 	msm7x30_init_cam();
 #endif
 	msm7x30_init_mmc();
-	msm_qsd_spi_init();
 
 	atv_dac_power_init();
 	msm_fb_add_devices();

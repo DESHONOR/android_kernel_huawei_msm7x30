@@ -11,6 +11,8 @@
  *
  */
 
+#define DEBUG
+
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
@@ -156,7 +158,7 @@ static int batt_get_temperature(void)
 	return rpc_get_information(RPC_BATTERY_TEMP) * 10;
 }
 
-static int batt_get_capacity(void)
+static int batt_get_direct_capacity(void)
 {
 	int32_t voltage = batt_get_voltage();
 
@@ -167,6 +169,100 @@ static int batt_get_capacity(void)
 	else
 		return (voltage - BATTERY_LOW_UVOLTS) * 100 /
 			(BATTERY_HIGH_UVOLTS - BATTERY_LOW_UVOLTS);
+}
+
+static bool batt_consumers[CONSUMER_MAX];
+static bool batt_stats_changed = false;
+
+static int chg_source;
+
+static struct delayed_work batt_work;
+static DEFINE_MUTEX(batt_mutex);
+
+static int batt_update(void)
+{
+	static bool firsttime = true;
+
+	static int stable_capacity = 0;
+	static int relative_capacity = 0;
+	static int last_direct_capacity = 0;
+
+	int direct_capacity = batt_get_direct_capacity();
+
+	bool charging = (chg_source != CHARGE_SOURCE_NONE);
+
+	int diff_direct = 0; /* Difference in last direct and right now. */
+	int diff_relative = 0; /* Difference in relative and stable. */
+
+	mutex_lock(&batt_mutex);
+
+	if (firsttime) {
+		stable_capacity = direct_capacity;
+		relative_capacity = direct_capacity;
+		firsttime = false;
+		goto end;
+	}
+
+	/* Stats changed, store new values. */
+	if (batt_stats_changed)
+		goto end;
+
+	/* Save diff_direct for comparing. */
+	diff_direct = direct_capacity - last_direct_capacity;
+
+	relative_capacity += diff_direct;
+
+	/* In display off, battery readings are *pretty* accurate. */
+	if (!batt_consumers[CONSUMER_LCD_DISPLAY] &&
+		!batt_consumers[CONSUMER_USB_CHARGER]) {
+		relative_capacity = direct_capacity;
+	}
+
+	/* Check the boundaries.
+	 * Also, better safe than sorry - if direct is 0, make sure the battery
+	 * gets depleted quickly. */
+	if (relative_capacity > 100 || direct_capacity == 100)
+		relative_capacity = 100;
+	else if (relative_capacity < 0 || direct_capacity == 0)
+		relative_capacity = 0;
+
+end:
+	/* Increase/Decrease only when relative is changed. */
+	diff_relative = relative_capacity - stable_capacity;
+
+	if (stable_capacity != 0 || stable_capacity != 100) {
+		if (diff_relative < 0 && !charging
+			&& direct_capacity < stable_capacity)
+			stable_capacity--;
+		else if (diff_relative > 0 && charging
+			&& direct_capacity > stable_capacity)
+			stable_capacity++;
+	}
+
+	pr_debug("%s: STABLE %d RELATIVE %d LAST %d DIRECT %d "
+		"DIFF_DIR %d DIFF_REL %d CHARGING %d CHANGED %d\n",
+		__func__, stable_capacity, relative_capacity,
+		last_direct_capacity, direct_capacity,
+		diff_direct, diff_relative, charging, batt_stats_changed);
+
+	last_direct_capacity = direct_capacity;
+	batt_stats_changed = false;
+
+	mutex_unlock(&batt_mutex);
+
+	return stable_capacity;
+}
+
+static void batt_update_func(struct work_struct *work)
+{
+	batt_stats_changed = true;
+	batt_update();
+}
+
+static int batt_get_capacity(void)
+{
+	return batt_update();
+
 }
 
 static struct android_bat_callbacks *android_bat_cb;
@@ -180,8 +276,10 @@ static void bq24152_set_mode(enum bq2415x_mode mode)
 		wake_lock(&charger_wakelock);
 
 	/* Avoid setting same mode multiple times. */
-	if (bq24152_callbacks && set_mode != mode)
+	if (bq24152_callbacks && set_mode != mode) {
 		bq24152_callbacks->set_mode(bq24152_callbacks, mode);
+		batt_notify_consumer(CONSUMER_USB_CHARGER, mode != BQ2415X_MODE_OFF);
+	}
 
 	if (mode == BQ2415X_MODE_OFF)
 		wake_unlock(&charger_wakelock);
@@ -189,7 +287,6 @@ static void bq24152_set_mode(enum bq2415x_mode mode)
 	set_mode = mode;
 }
 
-static int chg_source;
 void batt_chg_connected(enum chg_type chg_type)
 {
 	int new_chg_source;
@@ -229,6 +326,13 @@ void batt_vbus_draw(unsigned ma)
 {
 	if (bq24152_callbacks)
 		bq24152_callbacks->set_current_limit(bq24152_callbacks, ma);
+}
+
+void batt_notify_consumer(enum batt_consumer_type type, bool on)
+{
+	batt_consumers[type] = on;
+	batt_stats_changed = true; /* Set this here to avoid regular poller update accidentally. */
+	//schedule_delayed_work(&batt_work, msecs_to_jiffies(10000));
 }
 
 static void android_bat_register_callbacks(
@@ -338,6 +442,8 @@ struct i2c_board_info bq24152_device = {
 static int __init battery_init(void)
 {
 	wake_lock_init(&charger_wakelock, WAKE_LOCK_SUSPEND, "charger");
+
+	INIT_DELAYED_WORK(&batt_work, batt_update_func);
 
 	rpc_initialize(true);
 

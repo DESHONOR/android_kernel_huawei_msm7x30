@@ -2489,6 +2489,7 @@ static struct platform_device mddi_nt35582_wvga_device = {
 
 static int display_power(int on)
 {
+	batt_notify_consumer(CONSUMER_LCD_DISPLAY, on);
 	return 0;
 }
 

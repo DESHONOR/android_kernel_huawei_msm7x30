@@ -723,6 +723,44 @@ static int bq2415x_get_termination_current(struct bq2415x_device *bq)
 	return (3400 + 3400*ret) / bq->init_data.resistor_sense;
 }
 
+static int bq2415x_set_stat_pin_enable(struct bq2415x_device *bq, bool enabled)
+{
+	enum bq2415x_command command;
+
+	if (enabled)
+		command = BQ2415X_STAT_PIN_ENABLE;
+	else
+		command = BQ2415X_STAT_PIN_DISABLE;
+
+	bq->init_data.stat_pin_enable = enabled;
+
+	return bq2415x_exec_command(bq, command);
+}
+
+static int bq2415x_get_stat_pin_enable(struct bq2415x_device *bq)
+{
+	return bq2415x_exec_command(bq, BQ2415X_STAT_PIN_STATUS);
+}
+
+static int bq2415x_set_otg_pin_enable(struct bq2415x_device *bq, bool enabled)
+{
+	enum bq2415x_command command;
+
+	if (enabled)
+		command = BQ2415X_OTG_PIN_ENABLE;
+	else
+		command = BQ2415X_OTG_PIN_DISABLE;
+
+	bq->init_data.otg_pin_enable = enabled;
+
+	return bq2415x_exec_command(bq, command);
+}
+
+static int bq2415x_get_otg_pin_enable(struct bq2415x_device *bq)
+{
+	return bq2415x_exec_command(bq, BQ2415X_OTG_PIN_STATUS);
+}
+
 /* set default value of property */
 #define bq2415x_set_default_value(bq, prop) \
 	do { \
@@ -740,6 +778,9 @@ static int bq2415x_set_defaults(struct bq2415x_device *bq)
 	bq2415x_set_default_value(bq, current_limit);
 	bq2415x_set_default_value(bq, weak_battery_voltage);
 	bq2415x_set_default_value(bq, battery_regulation_voltage);
+
+	bq2415x_set_default_value(bq, stat_pin_enable);
+	bq2415x_set_default_value(bq, otg_pin_enable);
 
 	if (bq->init_data.resistor_sense > 0) {
 		bq2415x_set_default_value(bq, charge_current);
@@ -831,6 +872,50 @@ static void bq2415x_set_autotimer(struct bq2415x_device *bq, int state)
 	}
 
 	mutex_unlock(&bq2415x_timer_mutex);
+}
+
+/* compare values & reset if needed (for safety) */
+static void bq2415x_compare_values(struct bq2415x_device *bq)
+{
+	bool reset = false;
+	int value = 0;
+
+	value = bq2415x_get_current_limit(bq);
+	if (value != bq->init_data.current_limit) {
+		reset = true;
+		goto end;
+	}
+	value = bq2415x_get_weak_battery_voltage(bq);
+	if (value != bq->init_data.weak_battery_voltage) {
+		reset = true;
+		goto end;
+	}
+	value = bq2415x_get_battery_regulation_voltage(bq);
+	if (value != bq->init_data.battery_regulation_voltage) {
+		reset = true;
+		goto end;
+	}
+	value = bq2415x_get_charge_current(bq);
+	if (value != bq->init_data.charge_current) {
+		reset = true;
+		goto end;
+	}
+	value = bq2415x_get_stat_pin_enable(bq);
+	if (value != bq->init_data.stat_pin_enable) {
+		reset = true;
+		goto end;
+	}
+	value = bq2415x_get_otg_pin_enable(bq);
+	if (value != bq->init_data.otg_pin_enable) {
+		reset = true;
+		goto end;
+	}
+
+end:
+	if (reset) {
+		dev_err(bq->dev, "Registers corrupted, restoring\n");
+		bq2415x_set_mode(bq, bq->mode);
+	}
 }
 
 /* delayed work function for auto resetting chip timer */
@@ -956,6 +1041,8 @@ static void bq2415x_timer_work(struct work_struct *work)
 	}
 
 reschedule:
+	bq2415x_compare_values(bq);
+
 	schedule_delayed_work(&bq->work, BQ2415X_TIMER_TIMEOUT * HZ);
 }
 
@@ -1435,6 +1522,9 @@ static int bq2415x_probe(struct i2c_client *client,
 		dev_err(bq->dev, "failed to create sysfs entries: %d\n", ret);
 		goto error_3;
 	}
+
+	bq->init_data.stat_pin_enable = 0;
+	bq->init_data.otg_pin_enable = 0;
 
 	ret = bq2415x_set_mode(bq, BQ2415X_MODE_OFF);
 	if (ret) {

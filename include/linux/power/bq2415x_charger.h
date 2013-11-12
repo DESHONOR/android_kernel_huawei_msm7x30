@@ -62,6 +62,8 @@ struct bq2415x_platform_data {
 	int charge_current;		/* mA */
 	int termination_current;	/* mA */
 	int resistor_sense;		/* m ohm */
+	bool stat_pin_enable;
+	bool otg_pin_enable;
 	void (*status_changed)(enum bq2415x_status status);
 	void (*register_callbacks)(struct bq2415x_callbacks *ptr);
 	void (*unregister_callbacks)(void);

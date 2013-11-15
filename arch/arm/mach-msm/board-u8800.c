@@ -532,7 +532,7 @@ static struct msm_camera_sensor_platform_info sensor_board_info_s5k4e1gx = {
 };
 
 static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
-	.sensor_name		= "s5k4e1gx",
+	.sensor_name		= "s5k4e1gx_p", /* Actually S5K4E1GX, mask for U8800Pro camera. */
 	.sensor_reset_enable	= 1,
 	.sensor_reset		= 55,
 	.sensor_pwd		= 0,

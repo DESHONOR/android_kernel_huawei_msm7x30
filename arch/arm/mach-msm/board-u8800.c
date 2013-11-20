@@ -510,6 +510,58 @@ static void config_camera_off_gpios(void)
 #endif
 }
 
+static struct regulator_bulk_data camera_power_regs[] = {
+	/* IO_VDD & D_VDD */
+        { .supply = "gp2", .min_uV = 1800000, .max_uV = 1800000 },
+        /* VCM_VDD & A_VDD */
+	{ .supply = "gp7", .min_uV = 2850000, .max_uV = 2850000 },
+};
+
+static int config_camera_power_on(void)
+{
+	int rc = 0;
+
+	rc = regulator_bulk_get(NULL,
+		ARRAY_SIZE(camera_power_regs), camera_power_regs);
+	if (rc) {
+		pr_err("%s: Failed to get camera regulators rc=%d\n",
+			__func__, rc);
+		goto error_exit;
+	}
+
+	rc = regulator_bulk_set_voltage(ARRAY_SIZE(camera_power_regs),
+		camera_power_regs);
+	if (rc) {
+		pr_err("%s: Failed to set camera regulators voltage rc=%d\n",
+			__func__, rc);
+		goto error_free_reg;
+	}
+
+	rc = regulator_bulk_enable(ARRAY_SIZE(camera_power_regs),
+		camera_power_regs);
+	if (rc) {
+		pr_err("%s: Failed to enable camera regulators rc=%d\n",
+			__func__, rc);
+		goto error_free_reg;
+	}
+
+	return 0;
+
+error_free_reg:
+	regulator_bulk_free(ARRAY_SIZE(camera_power_regs),
+		camera_power_regs);
+error_exit:
+	return rc;
+}
+
+static void config_camera_power_off(void)
+{
+	regulator_bulk_disable(ARRAY_SIZE(camera_power_regs),
+		camera_power_regs);
+	regulator_bulk_free(ARRAY_SIZE(camera_power_regs),
+		camera_power_regs);
+}
+
 struct resource msm_camera_resources[] = {
 	{
 		.start	= 0xA6000000,
@@ -529,6 +581,8 @@ struct resource msm_camera_resources[] = {
 struct msm_camera_device_platform_data msm_camera_device_data = {
 	.camera_gpio_on  = config_camera_on_gpios,
 	.camera_gpio_off = config_camera_off_gpios,
+	.camera_power_on  = config_camera_power_on,
+	.camera_power_off = config_camera_power_off,
 	.ioext.camifpadphy = 0xAB000000,
 	.ioext.camifpadsz  = 0x00000400,
 	.ioext.csiphy = 0xA6100000,

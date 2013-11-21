@@ -125,6 +125,7 @@ static struct platform_device ion_dev;
 
 #define PMIC_GPIO_SD_DET	20 /* PMIC GPIO Number 21 */
 #define PMIC_GPIO_WLAN_EXT_POR	22 /* PMIC GPIO Number 23 */
+#define PMIC_GPIO_FLASH_PWM	23 /* PMIC GPIO Number 24 */
 #define PMIC_GPIO_LCD_PWM	24 /* PMIC GPIO Number 25 */
 #define PMIC_GPIO_SDC4_PWR_EN_N	35 /* PMIC GPIO Number 36 */
 
@@ -170,6 +171,19 @@ static int pm8058_gpios_init(void)
 		}
 	};
 
+	struct pm8xxx_gpio_init_info flash_pwm = {
+		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_FLASH_PWM),
+		{
+			.direction	= PM_GPIO_DIR_OUT,
+			.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
+			.output_value	= 0,
+			.pull		= PM_GPIO_PULL_NO,
+			.vin_sel 	= PM8058_GPIO_VIN_S3,
+			.out_strength	= PM_GPIO_STRENGTH_HIGH,
+			.function	= PM_GPIO_FUNC_2,
+		}
+	};
+
 	struct pm8xxx_gpio_init_info sdcc_det = {
 		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SD_DET),
 		{
@@ -184,6 +198,12 @@ static int pm8058_gpios_init(void)
 	rc = pm8xxx_gpio_config(sdcc_det.gpio, &sdcc_det.config);
 	if (rc) {
 		pr_err("%s PMIC_GPIO_SD_DET config failed\n", __func__);
+		return rc;
+	}
+
+	rc = pm8xxx_gpio_config(flash_pwm.gpio, &flash_pwm.config);
+	if (rc) {
+		pr_err("%s PMIC_GPIO_FLASH_PWM config failed\n", __func__);
 		return rc;
 	}
 
@@ -592,13 +612,13 @@ struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioclk.vfe_clk_rate  = 147456000,
 };
 
-static struct msm_camera_sensor_flash_src msm_flash_src_pwm = {
+struct msm_camera_sensor_flash_src msm_flash_src_pwm = {
 	.flash_sr_type = MSM_CAMERA_FLASH_SRC_PWM,
-	._fsrc.pwm_src.freq  = 1000,
+	._fsrc.pwm_src.freq  = 1500,
 	._fsrc.pwm_src.max_load = 300,
-	._fsrc.pwm_src.low_load = 30,
-	._fsrc.pwm_src.high_load = 100,
-	._fsrc.pwm_src.channel = 7,
+	._fsrc.pwm_src.low_load = 100,
+	._fsrc.pwm_src.high_load = 300,
+	._fsrc.pwm_src.channel = 0,
 };
 
 #ifdef CONFIG_S5K4E1GX

@@ -738,7 +738,6 @@ static int __init snddev_poweramp_gpio_init(void)
 {
 	int rc;
 
-	pr_info("snddev_poweramp_gpio_init \n");
 	rc = gpio_tlmm_config(audio_pamp_gpio_config, GPIO_CFG_ENABLE);
 	if (rc) {
 		printk(KERN_ERR
@@ -836,7 +835,6 @@ static int __init aux_pcm_gpio_init(void)
 {
 	int pin, rc;
 
-	pr_info("aux_pcm_gpio_init \n");
 	for (pin = 0; pin < ARRAY_SIZE(aux_pcm_gpio_on); pin++) {
 		rc = gpio_tlmm_config(aux_pcm_gpio_on[pin],
 					GPIO_CFG_ENABLE);

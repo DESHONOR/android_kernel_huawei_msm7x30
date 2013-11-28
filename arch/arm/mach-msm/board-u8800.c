@@ -415,12 +415,12 @@ static uint32_t camera_off_gpio_table[] = {
 	/* VSYNC_IN */
 	GPIO_CFG(14, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	/* MCLK */
-	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
 static uint32_t camera_on_vcm_gpio_table[] = {
 	/* CAM_VCM_PD_N */
-	GPIO_CFG(56, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA),
+	GPIO_CFG(56, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
 static uint32_t camera_on_gpio_table[] = {
@@ -454,7 +454,7 @@ static uint32_t camera_on_gpio_table[] = {
 	/* VSYNC_IN */
 	GPIO_CFG(14, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	/* MCLK */
-	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
 #ifdef CONFIG_S5K4E1GX
@@ -465,19 +465,19 @@ static uint32_t camera_off_gpio_s5k4e1gx_table[] = {
 
 static uint32_t camera_on_gpio_s5k4e1gx_table[] = {
 	/* CAMIF_SHDN_OUTS */
-	GPIO_CFG(55, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(55, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 #endif
 
 #ifdef CONFIG_OV5647_SUNNY
 static uint32_t camera_off_gpio_ov5647_sunny_table[] = {
 	/* CAMIF_RESET_OUTS_N */
-	GPIO_CFG(88, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(88, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
 static uint32_t camera_on_gpio_ov5647_sunny_table[] = {
 	/* CAMIF_RESET_OUTS_N */
-	GPIO_CFG(88, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(88, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 #endif
 
@@ -2902,12 +2902,12 @@ static struct msm_gpio msm_i2c_gpios_io[] = {
 };
 
 static struct msm_gpio qup_i2c_gpios_io[] = {
-	{ GPIO_CFG(16, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_scl" },
-	{ GPIO_CFG(17, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_sda" },
+	{ GPIO_CFG(16, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), "qup_scl" },
+	{ GPIO_CFG(17, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), "qup_sda" },
 };
 static struct msm_gpio qup_i2c_gpios_hw[] = {
-	{ GPIO_CFG(16, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_scl" },
-	{ GPIO_CFG(17, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_sda" },
+	{ GPIO_CFG(16, 2, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), "qup_scl" },
+	{ GPIO_CFG(17, 2, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_16MA), "qup_sda" },
 };
 
 static void

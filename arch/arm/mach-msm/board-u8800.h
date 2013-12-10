@@ -14,6 +14,7 @@
 #ifndef __ARCH_ARM_MACH_MSM_BOARD_U8800_H__
 #define __ARCH_ARM_MACH_MSM_BOARD_U8800_H__
 
+#include <linux/power/voltage_battery.h>
 #include "proccomm-regulator.h"
 
 /* board-u8800-regulator.c */
@@ -35,5 +36,7 @@ enum batt_consumer_type {
 	CONSUMER_MAX
 };
 void batt_notify_consumer(enum batt_consumer_type type, bool on);
+
+extern struct voltage_battery_platform_data voltage_bat_pdata;
 
 #endif

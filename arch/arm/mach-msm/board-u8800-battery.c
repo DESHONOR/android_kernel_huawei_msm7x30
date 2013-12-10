@@ -11,8 +11,6 @@
  *
  */
 
-#define DEBUG
-
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
@@ -21,6 +19,7 @@
 #include <linux/wakelock.h>
 #include <mach/msm_hsusb.h>
 #include <mach/msm_rpcrouter.h>
+#include <linux/power/voltage_battery.h>
 
 #include "board-u8800.h"
 
@@ -79,7 +78,7 @@ static int32_t rpc_get_information(enum rpc_information_type type)
 	} rep_batt_chg;
 
 	static struct rpc_rep_batt_chg last_rep_batt_chg;
-	static ktime_t last_poll;
+	static ktime_t last_poll = { .tv64 = 0 };
 
 	memset(&req_batt_chg, 0, sizeof(req_batt_chg));
 	req_batt_chg.more_data = cpu_to_be32(1);
@@ -89,7 +88,7 @@ static int32_t rpc_get_information(enum rpc_information_type type)
 
 	/* Pull only if time has expired. */
 	if ((ktime_to_ns(last_poll) + CHG_RPC_PULL_INTERVAL_NS)
-		< ktime_to_ns(ktime_get_real())) {
+		< ktime_to_ns(ktime_get_real()) || last_poll.tv64 == 0) {
 		memset(&rep_batt_chg, 0, sizeof(rep_batt_chg));
 		ret = msm_rpc_call_reply(chg_ep,
 			ONCRPC_CHG_GET_GENERAL_STATUS_PROC,
@@ -158,111 +157,37 @@ static int batt_get_temperature(void)
 	return rpc_get_information(RPC_BATTERY_TEMP) * 10;
 }
 
-static int batt_get_direct_capacity(void)
-{
-	int32_t voltage = batt_get_voltage();
-
-	if (voltage <= BATTERY_LOW_UVOLTS)
-		return 0;
-	else if (voltage >= BATTERY_HIGH_UVOLTS)
-		return 100;
-	else
-		return (voltage - BATTERY_LOW_UVOLTS) * 100 /
-			(BATTERY_HIGH_UVOLTS - BATTERY_LOW_UVOLTS);
-}
-
-static bool batt_consumers[CONSUMER_MAX];
-static bool batt_stats_changed = false;
-
 static int chg_source;
 
-static struct delayed_work batt_work;
-static DEFINE_MUTEX(batt_mutex);
-
-static int batt_update(void)
+static struct voltage_battery_callbacks *voltage_bat_cb = NULL;
+static void voltage_bat_register_callbacks(
+	struct voltage_battery_callbacks *callbacks)
 {
-	static bool firsttime = true;
-
-	static int stable_capacity = 0;
-	static int relative_capacity = 0;
-	static int last_direct_capacity = 0;
-
-	int direct_capacity = batt_get_direct_capacity();
-
-	bool charging = (chg_source != CHARGE_SOURCE_NONE);
-
-	int diff_direct = 0; /* Difference in last direct and right now. */
-	int diff_relative = 0; /* Difference in relative and stable. */
-
-	mutex_lock(&batt_mutex);
-
-	if (firsttime) {
-		stable_capacity = direct_capacity;
-		relative_capacity = direct_capacity;
-		firsttime = false;
-		goto end;
-	}
-
-	/* Stats changed, store new values. */
-	if (batt_stats_changed)
-		goto end;
-
-	/* Save diff_direct for comparing. */
-	diff_direct = direct_capacity - last_direct_capacity;
-
-	relative_capacity += diff_direct;
-
-	/* In display off, battery readings are *pretty* accurate. */
-	if (!batt_consumers[CONSUMER_LCD_DISPLAY] &&
-		!batt_consumers[CONSUMER_USB_CHARGER]) {
-		relative_capacity = direct_capacity;
-	}
-
-	/* Check the boundaries.
-	 * Also, better safe than sorry - if direct is 0, make sure the battery
-	 * gets depleted quickly. */
-	if (relative_capacity > 100 || direct_capacity == 100)
-		relative_capacity = 100;
-	else if (relative_capacity < 0 || direct_capacity == 0)
-		relative_capacity = 0;
-
-end:
-	/* Increase/Decrease only when relative is changed. */
-	diff_relative = relative_capacity - stable_capacity;
-
-	if (stable_capacity != 0 || stable_capacity != 100) {
-		if (diff_relative < 0 && !charging
-			&& direct_capacity < stable_capacity)
-			stable_capacity--;
-		else if (diff_relative > 0 && charging
-			&& direct_capacity > stable_capacity)
-			stable_capacity++;
-	}
-
-	pr_debug("%s: STABLE %d RELATIVE %d LAST %d DIRECT %d "
-		"DIFF_DIR %d DIFF_REL %d CHARGING %d CHANGED %d\n",
-		__func__, stable_capacity, relative_capacity,
-		last_direct_capacity, direct_capacity,
-		diff_direct, diff_relative, charging, batt_stats_changed);
-
-	last_direct_capacity = direct_capacity;
-	batt_stats_changed = false;
-
-	mutex_unlock(&batt_mutex);
-
-	return stable_capacity;
+	voltage_bat_cb = callbacks;
+}
+static void voltage_bat_unregister_callbacks(void)
+{
+	voltage_bat_cb = NULL;
 }
 
-static void batt_update_func(struct work_struct *work)
+static uint32_t voltage_bat_get_voltage(void)
 {
-	batt_stats_changed = true;
-	batt_update();
+	return batt_get_voltage();
 }
+
+struct voltage_battery_platform_data voltage_bat_pdata = {
+	.voltage_low = 3400000,
+	.voltage_high = 4200000,
+	.register_callbacks = voltage_bat_register_callbacks,
+	.unregister_callbacks = voltage_bat_unregister_callbacks,
+	.get_voltage = voltage_bat_get_voltage,
+};
 
 static int batt_get_capacity(void)
 {
-	return batt_update();
-
+	if (voltage_bat_cb)
+		return voltage_bat_cb->get_capacity(voltage_bat_cb);
+	return 50; /* Dummy. */
 }
 
 static struct android_bat_callbacks *android_bat_cb;
@@ -304,6 +229,9 @@ void batt_chg_connected(enum chg_type chg_type)
 		break;
 	}
 
+	voltage_bat_cb->set_charging(voltage_bat_cb,
+		(new_chg_source != CHARGE_SOURCE_NONE));
+
 	if (android_bat_cb)
 		android_bat_cb->charge_source_changed(android_bat_cb, new_chg_source);
 
@@ -328,11 +256,13 @@ void batt_vbus_draw(unsigned ma)
 		bq24152_callbacks->set_current_limit(bq24152_callbacks, ma);
 }
 
+static bool batt_consumers[CONSUMER_MAX];
 void batt_notify_consumer(enum batt_consumer_type type, bool on)
 {
 	batt_consumers[type] = on;
-	batt_stats_changed = true; /* Set this here to avoid regular poller update accidentally. */
-	//schedule_delayed_work(&batt_work, msecs_to_jiffies(10000));
+	if (voltage_bat_cb)
+		voltage_bat_cb->unreliable_update(voltage_bat_cb,
+			batt_consumers[CONSUMER_LCD_DISPLAY]);
 }
 
 static void android_bat_register_callbacks(
@@ -442,8 +372,6 @@ struct i2c_board_info bq24152_device = {
 static int __init battery_init(void)
 {
 	wake_lock_init(&charger_wakelock, WAKE_LOCK_SUSPEND, "charger");
-
-	INIT_DELAYED_WORK(&batt_work, batt_update_func);
 
 	rpc_initialize(true);
 

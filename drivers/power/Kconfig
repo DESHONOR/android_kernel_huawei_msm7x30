@@ -463,4 +463,10 @@ config CHARGER_BQ2415X
 	  You'll need this driver to charge batteries on e.g. Nokia
 	  RX-51/N900.
 
+config BATTERY_VOLTAGE
+	bool "Voltage Battery"
+	help
+	  Say Y to enable battery capacity measurements using closed-circuit
+	  voltage.
+
 endif # POWER_SUPPLY

@@ -103,13 +103,12 @@
 #define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE + MSM_FB_EXT_BUF_SIZE, 4096)
 
 #define MSM_PMEM_ADSP_SIZE	0x1800000
-#define PMEM_KERNEL_EBI0_SIZE	0x600000
 #define MSM_PMEM_AUDIO_SIZE	0x200000
 
 #ifdef CONFIG_ION_MSM
 static struct platform_device ion_dev;
 #define MSM_ION_MM_SIZE		0x1800000
-#define MSM_ION_AUDIO_SIZE	(MSM_PMEM_AUDIO_SIZE + PMEM_KERNEL_EBI0_SIZE)
+#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE
 #define MSM_ION_SF_SIZE		MSM_PMEM_SF_SIZE
 #define MSM_ION_WB_SIZE		MSM_FB_OVERLAY0_WRITEBACK_SIZE
 #define MSM_ION_HEAP_NUM	5
@@ -4260,14 +4259,6 @@ static int __init pmem_audio_size_setup(char *p)
 }
 early_param("pmem_audio_size", pmem_audio_size_setup);
 
-static unsigned pmem_kernel_ebi0_size = PMEM_KERNEL_EBI0_SIZE;
-static int __init pmem_kernel_ebi0_size_setup(char *p)
-{
-	pmem_kernel_ebi0_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_kernel_ebi0_size", pmem_kernel_ebi0_size_setup);
-
 #ifdef CONFIG_ION_MSM
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 static struct ion_co_heap_pdata co_ion_pdata = {
@@ -4374,7 +4365,6 @@ static void __init reserve_pmem_memory(void)
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_audio_pdata);
 	reserve_memory_for(&android_pmem_pdata);
-	msm7x30_reserve_table[MEMTYPE_EBI0].size += pmem_kernel_ebi0_size;
 #endif
 #endif
 }

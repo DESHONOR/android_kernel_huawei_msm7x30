@@ -2277,10 +2277,7 @@ static void __init msm_fb_add_devices(void)
 }
 
 #ifdef CONFIG_MARIMBA_CORE
-static struct platform_device msm_bt_power_device = {
-	.name	= "bt_power",
-	.id	= -1
-};
+static struct platform_device msm_bt_power_device;
 
 enum {
 	BT_RFR,
@@ -2727,10 +2724,13 @@ out:
 	return 0;
 }
 
-static void __init bt_power_init(void)
-{
-	msm_bt_power_device.dev.platform_data = &bluetooth_power;
-}
+static struct platform_device msm_bt_power_device = {
+	.name	= "bt_power",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &bluetooth_power,
+	}
+};
 #endif
 
 static struct i2c_gpio_platform_data i2c_dcdc_pdata = {
@@ -4183,7 +4183,6 @@ static void __init msm7x30_init(void)
 	i2c_register_board_info(5 /* I2C_DCDC ID */, i2c_dcdc_board_info,
 		ARRAY_SIZE(i2c_dcdc_board_info));
 
-	bt_power_init();
 #ifdef CONFIG_I2C_SSBI
 	msm_device_ssbi7.dev.platform_data = &msm_i2c_ssbi7_pdata;
 #endif

@@ -295,6 +295,9 @@ static struct led_info pm8xxx_led_info[] = {
 	[3] = {
 		.name = "blue",
 	},
+	[4] = {
+		.name = "flashlight",
+	},
 };
 
 static struct led_platform_data pm8xxx_led_core_pdata = {
@@ -321,6 +324,13 @@ static struct pm8xxx_led_config pm8xxx_led_configs[] = {
 	[3] = {
 		.id = PM8XXX_ID_LED_2,
 		.mode = PM8XXX_LED_MODE_MANUAL,
+	},
+	[4] = {
+		.id = PM8XXX_ID_FLASH_LED_0,
+		.mode = PM8XXX_LED_MODE_PWM1,
+		.max_current = 300,
+		.pwm_channel = 0,
+		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 	},
 };
 

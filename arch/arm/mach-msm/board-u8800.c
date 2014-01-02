@@ -619,19 +619,17 @@ struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioclk.vfe_clk_rate  = 147456000,
 };
 
-struct msm_camera_sensor_flash_src msm_flash_src_pwm = {
-	.flash_sr_type = MSM_CAMERA_FLASH_SRC_PWM,
-	._fsrc.pwm_src.freq  = 1500,
-	._fsrc.pwm_src.max_load = 300,
-	._fsrc.pwm_src.low_load = 100,
-	._fsrc.pwm_src.high_load = 300,
-	._fsrc.pwm_src.channel = 0,
+struct msm_camera_sensor_flash_src msm_flash_src_pm = {
+	.flash_sr_type = MSM_CAMERA_FLASH_SRC_PM,
+	._fsrc.pm_src.id = PM8XXX_ID_FLASH_LED_0,
+	._fsrc.pm_src.low_brightness = 128,
+	._fsrc.pm_src.high_brightness = 255,
 };
 
 #ifdef CONFIG_S5K4E1GX
 static struct msm_camera_sensor_flash_data flash_s5k4e1gx = {
 	.flash_type = MSM_CAMERA_FLASH_LED,
-	.flash_src  = &msm_flash_src_pwm,
+	.flash_src  = &msm_flash_src_pm,
 };
 
 static struct msm_camera_sensor_platform_info sensor_board_info_s5k4e1gx = {
@@ -663,7 +661,7 @@ static struct platform_device msm_camera_sensor_s5k4e1gx = {
 #ifdef CONFIG_OV5647_SUNNY
 static struct msm_camera_sensor_flash_data flash_ov5647_sunny = {
 	.flash_type = MSM_CAMERA_FLASH_LED,
-	.flash_src  = &msm_flash_src_pwm,
+	.flash_src  = &msm_flash_src_pm,
 };
 
 static struct msm_camera_sensor_platform_info sensor_board_info_ov5647_sunny = {

@@ -1714,6 +1714,7 @@ static int usb_diag_update_pid_and_serial_num(uint32_t pid, const char *snum)
 
 static struct android_usb_platform_data android_usb_pdata = {
 	.update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
+	.internal_ums = true,
 };
 
 static struct platform_device android_usb_device = {

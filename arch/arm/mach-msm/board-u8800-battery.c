@@ -239,10 +239,8 @@ static void bq24152_set_mode(enum bq2415x_mode mode)
 		wake_lock(&charger_wakelock);
 
 	/* Avoid setting same mode multiple times. */
-	if (bq24152_callbacks && set_mode != mode) {
+	if (bq24152_callbacks && set_mode != mode)
 		bq24152_callbacks->set_mode(bq24152_callbacks, mode);
-		batt_notify_consumer(CONSUMER_USB_CHARGER, mode != BQ2415X_MODE_OFF);
-	}
 
 	if (mode == BQ2415X_MODE_OFF)
 		wake_unlock(&charger_wakelock);

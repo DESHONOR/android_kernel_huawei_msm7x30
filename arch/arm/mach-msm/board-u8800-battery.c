@@ -185,7 +185,7 @@ restart:
 				goto restart;
 		}
 
-		msleep(10);
+		msleep(50);
 	}
 
 	final_result = voltage[0];

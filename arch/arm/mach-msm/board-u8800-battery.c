@@ -165,6 +165,8 @@ static int rpc_initialize(bool init)
 #define VBAT_SAMPLES		2
 #define VBAT_MAX_DIFF_MV	50
 
+#define VBAT_OFFSET		42
+
 static int batt_get_voltage(void)
 {
 	int32_t voltage[VBAT_SAMPLES] = {0};
@@ -176,6 +178,7 @@ restart:
 	 * This can happen due to HWMON having a faulty read. */
 	for (i = 0; i < VBAT_SAMPLES; i++) {
 		batt_read_adc(VBAT_ADC_CHANNEL, &voltage[i]);
+		voltage[i] += VBAT_OFFSET;
 
 		if (i != 0) {
 			if (abs(voltage[i] - voltage[i-1]) > VBAT_MAX_DIFF_MV)

@@ -1468,8 +1468,13 @@ static void mddi_host_initialize_registers(mddi_host_type host_idx)
 	/* Turn Around 2 register (= 0x0C) */
 	mddi_host_reg_out(TA2_LEN, MDDI_HOST_TA2_LEN);
 
+#ifdef CONFIG_MACH_HUAWEI_U8800
+	/* Drive hi register (= 0xB4) */
+	mddi_host_reg_out(DRIVE_HI, 0x00B4);
+#else
 	/* Drive hi register (= 0x96) */
 	mddi_host_reg_out(DRIVE_HI, 0x0096);
+#endif
 
 	/* Drive lo register (= 0x32) */
 	mddi_host_reg_out(DRIVE_LO, 0x0032);

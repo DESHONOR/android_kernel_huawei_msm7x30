@@ -38,10 +38,6 @@ struct android_bat_platform_data {
 	int temp_high_recovery;
 	int temp_low_recovery;
 	int temp_low_threshold;
-
-	unsigned long full_charging_time;
-	unsigned long recharging_time;
-	unsigned int recharging_voltage;
 };
 
 #endif

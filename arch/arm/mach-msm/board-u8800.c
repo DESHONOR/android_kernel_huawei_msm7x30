@@ -305,6 +305,27 @@ static struct led_platform_data pm8xxx_led_core_pdata = {
 	.leds = pm8xxx_led_info,
 };
 
+static int pm8xxx_notled_pwm_duty_pcts[56] = {
+	1, 4, 8, 12, 16, 20, 24, 28, 32, 36,
+	40, 44, 46, 52, 56, 60, 64, 68, 72, 76,
+	80, 84, 88, 92, 96, 100, 100, 100, 98, 95,
+	92, 88, 84, 82, 78, 74, 70, 66, 62, 58,
+	58, 54, 50, 48, 42, 38, 34, 30, 26, 22,
+	14, 10, 6, 4, 1
+};
+
+/*
+ * Note: There is a bug in LPG module that results in incorrect
+ * behavior of pattern when LUT index 0 is used. So effectively
+ * there are 63 usable LUT entries.
+ */
+static struct pm8xxx_pwm_duty_cycles pm8xxx_notled_pwm_duty_cycles = {
+	.duty_pcts = (int *)&pm8xxx_notled_pwm_duty_pcts,
+	.num_duty_pcts = ARRAY_SIZE(pm8xxx_notled_pwm_duty_pcts),
+	.duty_ms = PM8XXX_LED_PWM_DUTY_MS,
+	.start_idx = 1,
+};
+
 static struct pm8xxx_led_config pm8xxx_led_configs[] = {
 	[0] = {
 		.id = PM8XXX_ID_LED_KB_LIGHT,
@@ -315,15 +336,27 @@ static struct pm8xxx_led_config pm8xxx_led_configs[] = {
 	},
 	[1] = {
 		.id = PM8XXX_ID_LED_0,
-		.mode = PM8XXX_LED_MODE_MANUAL,
+		.mode = PM8XXX_LED_MODE_PWM1,
+		.max_current = 40, /* 2 <= I <= 40 */
+		.pwm_channel = 4,
+		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
+		.pwm_duty_cycles = &pm8xxx_notled_pwm_duty_cycles,
 	},
 	[2] = {
-		.id = PM8XXX_ID_LED_1,
-		.mode = PM8XXX_LED_MODE_MANUAL,
+		.id = PM8XXX_ID_LED_2,
+		.mode = PM8XXX_LED_MODE_PWM2,
+		.max_current = 40, /* 2 <= I <= 40 */
+		.pwm_channel = 6,
+		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
+		.pwm_duty_cycles = &pm8xxx_notled_pwm_duty_cycles,
 	},
 	[3] = {
-		.id = PM8XXX_ID_LED_2,
-		.mode = PM8XXX_LED_MODE_MANUAL,
+		.id = PM8XXX_ID_LED_1,
+		.mode = PM8XXX_LED_MODE_PWM3,
+		.max_current = 40, /* 2 <= I <= 40 */
+		.pwm_channel = 5,
+		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
+		.pwm_duty_cycles = &pm8xxx_notled_pwm_duty_cycles,
 	},
 	[4] = {
 		.id = PM8XXX_ID_FLASH_LED_0,
@@ -339,6 +372,7 @@ static struct pm8xxx_led_platform_data pm8xxx_leds_pdata = {
 	.led_core = &pm8xxx_led_core_pdata,
 	.configs = pm8xxx_led_configs,
 	.num_configs = ARRAY_SIZE(pm8xxx_led_configs),
+	.use_pwm = 1,
 };
 
 static struct pm8xxx_vibrator_platform_data pm8xxx_vibrator_pdata = {

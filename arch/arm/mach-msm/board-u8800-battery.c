@@ -24,6 +24,7 @@
 #include <linux/power/voltage_battery.h>
 
 #include "board-u8800.h"
+#include "board-u8800-battery.h"
 
 #define BATTERY_LOW_UVOLTS	3400000
 #define BATTERY_HIGH_UVOLTS	4200000
@@ -219,6 +220,10 @@ static uint32_t voltage_bat_get_voltage(void)
 struct voltage_battery_platform_data voltage_bat_pdata = {
 	.voltage_low = 3400000,
 	.voltage_high = 4200000,
+	.discharge_map = voltage_bat_dis_map,
+	.discharge_map_size = ARRAY_SIZE(voltage_bat_dis_map),
+	.charge_map = voltage_bat_dis_map,
+	.charge_map_size = ARRAY_SIZE(voltage_bat_dis_map),
 	.register_callbacks = voltage_bat_register_callbacks,
 	.unregister_callbacks = voltage_bat_unregister_callbacks,
 	.get_voltage = voltage_bat_get_voltage,

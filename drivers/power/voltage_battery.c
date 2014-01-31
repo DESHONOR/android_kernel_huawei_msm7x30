@@ -19,7 +19,7 @@
 #define DEBUG 1
 
 #define STANDARD_UPDATE_MS (60 * 1000)
-#define UNRELIABLE_UPDATE_MS (90 * 1000)
+#define UNRELIABLE_UPDATE_MS (30 * 1000)
 
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
@@ -68,10 +68,36 @@ static uint8_t voltage_bat_calculate_capacity(struct voltage_bat_data *data,
 			(voltage_high - voltage_low);
 }
 
-static uint8_t voltage_bat_get_direct_capacity(struct voltage_bat_data *data)
+static uint8_t voltage_bat_get_linear_capacity(struct voltage_bat_data *data)
 {
 	uint32_t voltage = data->pdata->get_voltage();
 	return voltage_bat_calculate_capacity(data, voltage);
+}
+
+static uint8_t voltage_get_ocv_capacity(struct voltage_bat_data *data)
+{
+	uint32_t voltage = data->pdata->get_voltage();
+	int8_t capacity = -1;
+	int i = 0;
+
+	const struct voltage_mapping *mapping = data->charging ?
+		data->pdata->charge_map : data->pdata->discharge_map;
+	int mapping_size = data->charging ?
+		data->pdata->charge_map_size : data->pdata->discharge_map_size;
+
+	/* Go through the map & find a match. */
+	for (i = 0; i < mapping_size; i++) {
+		if (voltage >= mapping[i].voltage) {
+			capacity = mapping[i].capacity;
+			break;
+		}
+	}
+
+	/* Revert to linear calculation if failed to find a match. */
+	if (capacity == -1)
+		capacity = voltage_bat_get_linear_capacity(data);
+
+	return capacity;
 }
 
 static uint8_t voltage_bat_cb_get_capacity(
@@ -114,7 +140,7 @@ static void voltage_bat_cb_set_charging(
 
 static void voltage_bat_update(struct voltage_bat_data *data)
 {
-	uint8_t direct = voltage_bat_get_direct_capacity(data);
+	uint8_t direct = voltage_get_ocv_capacity(data);
 
 	int8_t diff_direct = 0, diff_relative = 0;
 
@@ -136,9 +162,9 @@ static void voltage_bat_update(struct voltage_bat_data *data)
 norelative:
 	diff_relative = data->capacity.relative - data->capacity.stable;
 
-	if (data->capacity.stable > 0 && diff_relative < 0/* && !data->charging*/)
+	if (data->capacity.stable > 0 && diff_relative < 0)
 		data->capacity.stable--;
-	else if (data->capacity.stable < 100 && diff_relative > 0/* && data->charging*/)
+	else if (data->capacity.stable < 100 && diff_relative > 0)
 		data->capacity.stable++;
 
 	dev_vdbg(data->dev,
@@ -171,13 +197,35 @@ static void voltage_bat_monitor_work(struct work_struct *work)
 
 static void voltage_bat_set_defaults(struct voltage_bat_data *data)
 {
-	uint8_t direct_capacity = voltage_bat_get_direct_capacity(data);
+	uint8_t direct_capacity = voltage_get_ocv_capacity(data);
 
 	data->capacity.stable = direct_capacity;
 	data->capacity.relative = direct_capacity;
 	data->capacity.direct = direct_capacity;
 	data->monitor.unreliable = false;
 	data->monitor.use_relative = false;
+}
+
+static int voltage_bat_validate_pdata(struct device *dev,
+	struct voltage_battery_platform_data *pdata)
+{
+	if (pdata->voltage_low < 0 || pdata->voltage_high < 0) {
+		dev_err(dev, "voltages out of range: %d %d\n",
+			pdata->voltage_low, pdata->voltage_high);
+		return -EINVAL;
+	} else if (!pdata->discharge_map || !pdata->charge_map ||
+		pdata->discharge_map_size < 101 ||
+		pdata->charge_map_size < 101) {
+		dev_err(dev, "charge/discharge mappings not properly set up\n");
+		return -EINVAL;
+	} else if (!pdata->register_callbacks || !pdata->unregister_callbacks) {
+		dev_err(dev, "callbacks not set up\n");
+		return -EINVAL;
+	} else if (!pdata->get_voltage) {
+		dev_err(dev, "get_voltage not set up\n");
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static int voltage_bat_probe(struct platform_device *pdev)
@@ -198,6 +246,13 @@ static int voltage_bat_probe(struct platform_device *pdev)
 		goto err_exit;
 	}
 
+	ret = voltage_bat_validate_pdata(dev, pdata);
+	if (ret) {
+		dev_err(dev, "failed to validate pdata\n");
+		ret = -EINVAL;
+		goto err_exit;
+	}
+
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data) {
 		dev_err(dev, "failed to allocate memory\n");
@@ -214,8 +269,7 @@ static int voltage_bat_probe(struct platform_device *pdev)
 	data->callbacks.get_capacity = voltage_bat_cb_get_capacity;
 	data->callbacks.unreliable_update = voltage_bat_cb_unreliable_update;
 	data->callbacks.set_charging = voltage_bat_cb_set_charging;
-	if (pdata->register_callbacks)
-		pdata->register_callbacks(&data->callbacks);
+	pdata->register_callbacks(&data->callbacks);
 
 	voltage_bat_set_defaults(data);
 
@@ -235,9 +289,9 @@ static int voltage_bat_remove(struct platform_device *pdev)
 	struct voltage_bat_data *data = platform_get_drvdata(pdev);
 	const struct voltage_battery_platform_data *pdata = data->pdata;
 
-	if (pdata->unregister_callbacks)
-		pdata->unregister_callbacks();
-	data->callbacks.get_capacity = NULL;
+	cancel_delayed_work(&data->monitor_work);
+
+	pdata->unregister_callbacks();
 
 	kfree(data);
 

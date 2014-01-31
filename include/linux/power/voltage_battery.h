@@ -20,6 +20,13 @@
 
 #include <linux/types.h>
 
+struct voltage_mapping {
+	/* Range 0-100 ordered from top to down. */
+	uint8_t capacity;
+	/* OCV voltage. */
+	int32_t voltage;
+};
+
 struct voltage_battery_callbacks {
 	uint8_t (*get_capacity)(struct voltage_battery_callbacks *callbacks);
 	void (*unreliable_update)(struct voltage_battery_callbacks *callbacks,
@@ -30,12 +37,14 @@ struct voltage_battery_callbacks {
 
 struct voltage_battery_platform_data {
 	/* Battery min/max voltage. */
-	uint32_t voltage_low;
-	uint32_t voltage_high;
+	int32_t voltage_low;
+	int32_t voltage_high;
 
 	/* Discharge/Charge mappings. */
-	uint8_t *discharge_map;
-	uint8_t *charge_map;
+	const struct voltage_mapping *discharge_map;
+	const struct voltage_mapping *charge_map;
+	int discharge_map_size;
+	int charge_map_size;
 
 	void (*register_callbacks)(struct voltage_battery_callbacks *callbacks);
 	void (*unregister_callbacks)(void);

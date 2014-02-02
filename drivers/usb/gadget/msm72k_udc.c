@@ -190,6 +190,7 @@ struct usb_info {
 	/* max power requested by selected configuration */
 	unsigned b_max_pow;
 	unsigned chg_current;
+	unsigned manual_chg_current;
 	unsigned chg_type_retry_cnt;
 	bool proprietary_chg;
 	struct delayed_work chg_det;
@@ -331,6 +332,9 @@ static int usb_get_max_power(struct usb_info *ui)
 
 	if (temp == USB_CHG_TYPE__INVALID)
 		return -ENODEV;
+
+	if (ui->manual_chg_current)
+		return ui->manual_chg_current;
 
 	if (temp == USB_CHG_TYPE__WALLCHARGER && !ui->proprietary_chg)
 		return USB_WALLCHARGER_CHG_CURRENT;
@@ -2637,6 +2641,41 @@ static ssize_t show_usb_chg_current(struct device *dev,
 	return count;
 }
 
+static ssize_t store_usb_manual_chg_current(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct usb_info *ui = the_usb_info;
+	unsigned long mA;
+
+	if (ui->gadget.is_a_peripheral)
+		return -EINVAL;
+
+	if (strict_strtoul(buf, 10, &mA))
+		return -EINVAL;
+
+	ui->manual_chg_current = mA;
+	if (mA == 0) {
+		ui->chg_current = usb_get_max_power(ui);
+		usb_phy_set_power(ui->xceiv, ui->chg_current);
+	} else {
+		ui->chg_current = mA;
+		usb_phy_set_power(ui->xceiv, mA);
+	}
+
+	return count;
+}
+
+static ssize_t show_usb_manual_chg_current(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct usb_info *ui = the_usb_info;
+	size_t count;
+
+	count = snprintf(buf, PAGE_SIZE, "%d\n", ui->manual_chg_current);
+
+	return count;
+}
+
 static ssize_t show_usb_chg_type(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -2659,6 +2698,8 @@ static DEVICE_ATTR(usb_speed, S_IRUSR, show_usb_speed, 0);
 static DEVICE_ATTR(chg_type, S_IRUSR, show_usb_chg_type, 0);
 static DEVICE_ATTR(chg_current, S_IWUSR | S_IRUSR,
 		show_usb_chg_current, store_usb_chg_current);
+static DEVICE_ATTR(manual_chg_current, S_IWUSR | S_IRUSR,
+		show_usb_manual_chg_current, store_usb_manual_chg_current);
 
 #ifdef CONFIG_USB_OTG
 static ssize_t store_host_req(struct device *dev,
@@ -2877,6 +2918,12 @@ static int msm72k_gadget_start(struct usb_gadget_driver *driver,
 		dev_err(&ui->pdev->dev,
 			"failed to create sysfs entry(chg_current):"
 			"err:(%d)\n", retval);
+	retval = device_create_file(&ui->gadget.dev,
+		&dev_attr_manual_chg_current);
+	if (retval != 0)
+		dev_err(&ui->pdev->dev,
+			"failed to create sysfs entry(manual_chg_current):"
+			"err:(%d)\n", retval);
 
 	dev_dbg(&ui->pdev->dev, "registered gadget driver '%s'\n",
 			driver->driver.name);
@@ -2916,6 +2963,7 @@ static int msm72k_gadget_stop(struct usb_gadget_driver *driver)
 	device_remove_file(&dev->gadget.dev, &dev_attr_usb_speed);
 	device_remove_file(&dev->gadget.dev, &dev_attr_chg_type);
 	device_remove_file(&dev->gadget.dev, &dev_attr_chg_current);
+	device_remove_file(&dev->gadget.dev, &dev_attr_manual_chg_current);
 	driver->disconnect(&dev->gadget);
 	driver->unbind(&dev->gadget);
 	dev->gadget.dev.driver = NULL;

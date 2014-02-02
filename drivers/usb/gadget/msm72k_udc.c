@@ -422,8 +422,10 @@ static void usb_chg_stop(struct work_struct *w)
 
 	temp = atomic_read(&otg->chg_type);
 
-	if (temp == USB_CHG_TYPE__SDP)
+	if (temp == USB_CHG_TYPE__SDP) {
+		ui->chg_current = 0;
 		usb_phy_set_power(ui->xceiv, 0);
+	}
 }
 
 static void usb_chg_detect(struct work_struct *w)
@@ -456,8 +458,10 @@ static void usb_chg_detect(struct work_struct *w)
 
 	atomic_set(&otg->chg_type, temp);
 	maxpower = usb_get_max_power(ui);
-	if (maxpower > 0)
+	if (maxpower > 0) {
+		ui->chg_current = maxpower;
 		usb_phy_set_power(ui->xceiv, maxpower);
+	}
 
 	/* USB driver prevents idle and suspend power collapse(pc)
 	 * while USB cable is connected. But when dedicated charger is
@@ -1617,7 +1621,6 @@ static void usb_do_work(struct work_struct *w)
 			 */
 			if (flags & USB_FLAG_VBUS_OFFLINE) {
 
-				ui->chg_current = 0;
 				/* wait incase chg_detect is running */
 				if (!ui->gadget.is_a_peripheral)
 					cancel_delayed_work_sync(&ui->chg_det);
@@ -1653,6 +1656,7 @@ static void usb_do_work(struct work_struct *w)
 				 * we must let modem know about charger
 				 * disconnection
 				 */
+				ui->chg_current = 0;
 				usb_phy_set_power(ui->xceiv, 0);
 
 				if (ui->irq) {
@@ -1690,6 +1694,7 @@ static void usb_do_work(struct work_struct *w)
 				if (maxpower < 0)
 					break;
 
+				ui->chg_current = 0;
 				usb_phy_set_power(ui->xceiv, 0);
 				/* To support TCXO during bus suspend
 				 * This might be dummy check since bus suspend

@@ -2636,7 +2636,7 @@ static ssize_t show_usb_chg_current(struct device *dev,
 	struct usb_info *ui = the_usb_info;
 	size_t count;
 
-	count = snprintf(buf, PAGE_SIZE, "%d", ui->chg_current);
+	count = snprintf(buf, PAGE_SIZE, "%d\n", ui->chg_current);
 
 	return count;
 }
@@ -2687,7 +2687,7 @@ static ssize_t show_usb_chg_type(struct device *dev,
 			"DEDICATED CHARGER",
 			"INVALID"};
 
-	count = snprintf(buf, PAGE_SIZE, "%s",
+	count = snprintf(buf, PAGE_SIZE, "%s\n",
 			chg_type[atomic_read(&otg->chg_type)]);
 
 	return count;

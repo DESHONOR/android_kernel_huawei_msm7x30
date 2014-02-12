@@ -33,6 +33,8 @@
 #define CHG_RPC_VER_4_1				0x00040001
 #define ONCRPC_CHG_GET_GENERAL_STATUS_PROC	12
 
+#define ONCRPC_CHG_GET_CAPACITY_PROC		19
+
 #define VBAT_ADC_CHANNEL 1
 
 /* The modem may be busy, let's ask for new information and wait for 5 seconds
@@ -231,9 +233,35 @@ struct voltage_battery_platform_data voltage_bat_pdata = {
 
 static int batt_get_capacity(void)
 {
+	int rc;
+	int capacity = -1;
+
+	struct {
+		struct rpc_request_hdr hdr;
+	} req;
+	struct {
+		struct rpc_reply_hdr hdr;
+		u32 battery_level;
+	} rep;
+
+	rc = msm_rpc_call_reply(chg_ep, ONCRPC_CHG_GET_CAPACITY_PROC,
+		&req, sizeof(req), &rep, sizeof(rep), msecs_to_jiffies(1000));
+	if (rc < 0)
+		goto voltage_based;
+
+	capacity = be32_to_cpu(rep.battery_level);
+	if (capacity > 100 || capacity < 0) /* Error checking. */
+		goto voltage_based;
+
+	return capacity;
+
+voltage_based:
 	if (voltage_bat_cb)
-		return voltage_bat_cb->get_capacity(voltage_bat_cb);
-	return 50; /* Dummy. */
+		capacity = voltage_bat_cb->get_capacity(voltage_bat_cb);
+	else
+		capacity = 50; /* Dummy. */
+
+	return capacity;
 }
 
 static struct android_bat_callbacks *android_bat_cb;

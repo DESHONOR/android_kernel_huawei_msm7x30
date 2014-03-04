@@ -126,10 +126,7 @@ static struct platform_device ion_dev;
 #define PMIC_GPIO_LCD_PWM	24 /* PMIC GPIO Number 25 */
 #define PMIC_GPIO_SDC4_PWR_EN_N	35 /* PMIC GPIO Number 36 */
 
-#define DDR1_BANK_BASE 0X20000000
 #define DDR2_BANK_BASE 0X40000000
-
-static unsigned int phys_add = DDR2_BANK_BASE;
 unsigned long ebi1_phys_offset = DDR2_BANK_BASE;
 EXPORT_SYMBOL(ebi1_phys_offset);
 
@@ -3890,9 +3887,9 @@ static void __init msm7x30_calculate_reserve_sizes(void)
 
 static int msm7x30_paddr_to_memtype(unsigned int paddr)
 {
-	if (paddr < phys_add)
+	if (paddr < DDR2_BANK_BASE)
 		return MEMTYPE_EBI0;
-	if (paddr >= phys_add && paddr < 0x80000000)
+	if (paddr >= DDR2_BANK_BASE && paddr < 0x80000000)
 		return MEMTYPE_EBI1;
 	return MEMTYPE_NONE;
 }
@@ -3939,14 +3936,7 @@ static void __init msm7x30_init_early(void)
 static void __init msm7x30_fixup(struct tag *tags, char **cmdline,
 				 struct meminfo *mi)
 {
-	for (; tags->hdr.size; tags = tag_next(tags)) {
-		if (tags->hdr.tag == ATAG_MEM && tags->u.mem.start ==
-							DDR1_BANK_BASE) {
-				ebi1_phys_offset = DDR1_BANK_BASE;
-				phys_add = DDR1_BANK_BASE;
-				break;
-		}
-	}
+
 }
 
 #define ATAG_MEM_OSBL	0x5441000C

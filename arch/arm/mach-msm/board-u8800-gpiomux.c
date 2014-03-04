@@ -20,14 +20,14 @@
 static struct gpiomux_setting ts_int_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_DOWN,
 	.dir = GPIOMUX_IN,
 };
 
 static struct gpiomux_setting ts_resout_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_DOWN,
 	.dir = GPIOMUX_OUT_HIGH,
 };
 
@@ -48,8 +48,8 @@ static struct msm_gpiomux_config msm7x30_ts_configs[] __initdata = {
 
 static struct gpiomux_setting i2c_dcdc_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_12MA,
-	.pull = GPIOMUX_PULL_NONE,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 static struct msm_gpiomux_config msm7x30_i2c_dcdc_configs[] __initdata = {

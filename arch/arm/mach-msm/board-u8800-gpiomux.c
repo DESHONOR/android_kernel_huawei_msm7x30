@@ -31,38 +31,35 @@ static struct gpiomux_setting ts_resout_sus_cfg = {
 	.dir = GPIOMUX_OUT_HIGH,
 };
 
-static struct msm_gpiomux_config msm7x30_ts_configs[] __initdata = {
-	{	/* TOUCH_INT */
-		.gpio = 148,
-		.settings = {
-			[GPIOMUX_SUSPENDED]    = &ts_int_sus_cfg,
-		},
-	},
-	{	/* TOUCH_RESET */
-		.gpio = 85,
-		.settings = {
-			[GPIOMUX_SUSPENDED]    = &ts_resout_sus_cfg,
-		},
-	},
-};
-
 static struct gpiomux_setting i2c_dcdc_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct msm_gpiomux_config msm7x30_i2c_dcdc_configs[] __initdata = {
+static struct msm_gpiomux_config u8800_standard_configs[] __initdata = {
+	{	/* TOUCH_RESET */
+		.gpio = 85,
+		.settings = {
+			[GPIOMUX_SUSPENDED]	= &ts_resout_sus_cfg,
+		},
+	},
+	{	/* TOUCH_INT */
+		.gpio = 148,
+		.settings = {
+			[GPIOMUX_SUSPENDED]	= &ts_int_sus_cfg,
+		},
+	},
 	{	/* I2C_SCL_DCDC */
 		.gpio = 149,
 		.settings = {
-			[GPIOMUX_SUSPENDED]    = &i2c_dcdc_sus_cfg,
+			[GPIOMUX_SUSPENDED]	= &i2c_dcdc_sus_cfg,
 		},
 	},
 	{	/* I2C_SDA_DCDC */
 		.gpio = 150,
 		.settings = {
-			[GPIOMUX_SUSPENDED]    = &i2c_dcdc_sus_cfg,
+			[GPIOMUX_SUSPENDED]	= &i2c_dcdc_sus_cfg,
 		},
 	},
 };
@@ -78,7 +75,7 @@ static struct msm_gpiomux_config msm7x30_standard_configs[] __initdata = {
 	{	/* MDP_VSYNC */
 		.gpio = 30,
 		.settings = {
-			[GPIOMUX_SUSPENDED]    = &mdp_vsync_cfg,
+			[GPIOMUX_SUSPENDED]	= &mdp_vsync_cfg,
 		},
 	},
 };
@@ -91,11 +88,8 @@ int __init msm7x30_init_gpiomux(void)
 		return rc;
 	}
 
-	msm_gpiomux_install(msm7x30_ts_configs,
-			ARRAY_SIZE(msm7x30_ts_configs));
-
-	msm_gpiomux_install(msm7x30_i2c_dcdc_configs,
-			ARRAY_SIZE(msm7x30_i2c_dcdc_configs));
+	msm_gpiomux_install(u8800_standard_configs,
+			ARRAY_SIZE(u8800_standard_configs));
 
 	msm_gpiomux_install(msm7x30_standard_configs,
 			ARRAY_SIZE(msm7x30_standard_configs));

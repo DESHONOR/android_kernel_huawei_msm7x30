@@ -783,16 +783,6 @@ static int __init snddev_poweramp_gpio_init(void)
 	return rc;
 }
 
-void msm_snddev_tx_route_config(void)
-{
-
-}
-
-void msm_snddev_tx_route_deconfig(void)
-{
-
-}
-
 void msm_sndddev_poweramp_gpio(bool enable)
 {
 	gpio_set_value(82, enable ? 1 : 0);

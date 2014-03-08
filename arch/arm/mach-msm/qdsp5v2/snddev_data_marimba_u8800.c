@@ -263,8 +263,8 @@ static struct snddev_icodec_data snddev_ihs_mono_tx_data = {
 	.pmctl_id = NULL,
 	.pmctl_id_sz = 0,
 	.default_sample_rate = 48000,
-	.pamp_on = msm_snddev_tx_route_config,
-	.pamp_off = msm_snddev_tx_route_deconfig,
+	.pamp_on = NULL,
+	.pamp_off = NULL,
 };
 
 static struct platform_device msm_ihs_mono_tx_device = {
@@ -723,8 +723,8 @@ static struct snddev_icodec_data snddev_ispeaker_tx_data = {
 	.pmctl_id = ispk_pmctl_id,
 	.pmctl_id_sz = ARRAY_SIZE(ispk_pmctl_id),
 	.default_sample_rate = 48000,
-	.pamp_on = msm_snddev_tx_route_config,
-	.pamp_off = msm_snddev_tx_route_deconfig,
+	.pamp_on = NULL,
+	.pamp_off = NULL,
 };
 
 static struct platform_device msm_ispeaker_tx_device = {
@@ -786,8 +786,8 @@ static struct snddev_mi2s_data snddev_mi2s_stereo_rx_data = {
 	.acdb_id = ACDB_ID_HDMI,
 	.channel_mode = 2,
 	.sd_lines = MI2S_SD_0,
-	.route = msm_snddev_tx_route_config,
-	.deroute = msm_snddev_tx_route_deconfig,
+	.route = NULL,
+	.deroute = NULL,
 	.default_sample_rate = 48000,
 };
 

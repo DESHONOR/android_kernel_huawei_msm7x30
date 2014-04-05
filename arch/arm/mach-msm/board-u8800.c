@@ -1796,8 +1796,8 @@ static int tpa2028d_enable(int enable)
 static struct audio_amp_platform_data tpa2028d_platform_data =  {
 	.enable = tpa2028d_enable,
 	.agc_compression_rate = 0,
-	.agc_output_limiter_disable = 1,
-	.agc_fixed_gain = 8,
+	.agc_output_limiter_disable = 0,
+	.agc_fixed_gain = 0,
 };
 #endif
 

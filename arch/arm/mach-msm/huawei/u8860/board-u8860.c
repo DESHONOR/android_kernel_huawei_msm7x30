@@ -138,8 +138,8 @@ static struct platform_device ion_dev;
 
 #include <linux/touch_platform_config.h>
 
-//static char buf_virtualkey[500];
-//static ssize_t  buf_vkey_size=0;
+static char buf_virtualkey[500];
+static ssize_t  buf_vkey_size=0;
 
 atomic_t touch_detected_yet = ATOMIC_INIT(0); 
 #define MSM_7x30_TOUCH_INT       148
@@ -1829,6 +1829,49 @@ static struct audio_amp_platform_data tpa2028d_platform_data =  {
 };
 #endif
 
+static ssize_t synaptics_virtual_keys_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+        memcpy( buf, buf_virtualkey, buf_vkey_size );
+		return buf_vkey_size; 
+}
+
+static struct kobj_attribute synaptics_virtual_keys_attr = {
+	.attr = {
+		.name = "virtualkeys.synaptics",
+		.mode = S_IRUGO,
+	},
+	.show = &synaptics_virtual_keys_show,
+};
+
+static struct attribute *synaptics_properties_attrs[] = {
+	&synaptics_virtual_keys_attr.attr,
+	NULL
+};
+
+static struct attribute_group synaptics_properties_attr_group = {
+	.attrs = synaptics_properties_attrs,
+};
+
+static void __init virtualkeys_init(void)
+{
+	struct kobject *properties_kobj;
+	int ret = 0;
+	buf_vkey_size = sprintf(buf_virtualkey,
+		__stringify(EV_KEY) ":" __stringify(KEY_HOMEPAGE)  ":50:930:112:80"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_MENU)   ":180:930:112:80"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_BACK)   ":300:930:112:80"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":430:930:112:80"
+		"\n");
+
+	properties_kobj = kobject_create_and_add("board_properties", NULL);
+	if (properties_kobj)
+		ret = sysfs_create_group(properties_kobj,
+			&synaptics_properties_attr_group);
+	if (!properties_kobj || ret)
+		pr_err("failed to create board_properties\n");
+}
+
 #ifdef CONFIG_HUAWEI_FEATURE_RMI_TOUCH
 int power_switch(int pm)
 {
@@ -1964,13 +2007,6 @@ static struct touch_hw_platform_data touch_hw_data = {
     .get_touch_reset_pin = get_touch_reset_pin,
     .get_phone_version = get_phone_version,
 };
-/*
-static struct i2c_board_info synaptics_rmi_1564_ts = {
-	I2C_BOARD_INFO("Synaptics_rmi", 0x70),   // actual address 0x24, use fake address 0x70
-	.platform_data = &touch_hw_data,
-	.irq = MSM_GPIO_TO_INT(MSM_7x30_TOUCH_INT),
-	.flags = true, //this flags is the switch of the muti_touch 
-};*/
 #endif
 
 static struct i2c_board_info msm_i2c_board_info[] = {
@@ -3698,7 +3734,7 @@ static void __init msm7x30_init(void)
 #endif
 
 	pm8058_gpios_init();
-
+	virtualkeys_init();
 	hwid_init();
 
 	boot_reason = *(unsigned int *)

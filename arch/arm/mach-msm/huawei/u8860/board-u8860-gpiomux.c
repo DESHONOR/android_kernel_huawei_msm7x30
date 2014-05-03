@@ -37,7 +37,7 @@ static struct gpiomux_setting i2c_dcdc_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct msm_gpiomux_config u8800_standard_configs[] __initdata = {
+static struct msm_gpiomux_config u8860_standard_configs[] __initdata = {
 	{	/* TOUCH_RESET */
 		.gpio = 85,
 		.settings = {
@@ -88,8 +88,8 @@ int __init msm7x30_init_gpiomux(void)
 		return rc;
 	}
 
-	msm_gpiomux_install(u8800_standard_configs,
-			ARRAY_SIZE(u8800_standard_configs));
+	msm_gpiomux_install(u8860_standard_configs,
+			ARRAY_SIZE(u8860_standard_configs));
 
 	msm_gpiomux_install(msm7x30_standard_configs,
 			ARRAY_SIZE(msm7x30_standard_configs));

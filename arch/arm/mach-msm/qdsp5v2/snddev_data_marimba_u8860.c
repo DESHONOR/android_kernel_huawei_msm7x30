@@ -15,7 +15,7 @@
 #include <linux/mfd/msm-adie-codec.h>
 #include <linux/uaccess.h>
 #include <mach/qdsp5v2/snddev_icodec.h>
-#include <mach/qdsp5v2/marimba_profile_u8800.h>
+#include <mach/qdsp5v2/marimba_profile_u8860.h>
 #include <mach/qdsp5v2/aux_pcm.h>
 #include <mach/qdsp5v2/snddev_ecodec.h>
 #include <mach/qdsp5v2/audio_dev_ctl.h>

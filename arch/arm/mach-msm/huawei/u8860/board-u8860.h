@@ -17,10 +17,10 @@
 #include <linux/power/voltage_battery.h>
 #include "proccomm-regulator.h"
 
-/* board-u8800-regulator.c */
+/* board-u8860-regulator.c */
 extern struct proccomm_regulator_platform_data msm7x30_proccomm_regulator_data;
 
-/* board-u8800-battery.c */
+/* board-u8860-battery.c */
 extern struct platform_device android_bat_device;
 enum chg_type;
 void batt_chg_connected(enum chg_type chg_type);

@@ -3901,7 +3901,7 @@ static int __init parse_tag_memosbl(const struct tag *tag)
 }
 __tagtable(ATAG_MEM_OSBL, parse_tag_memosbl);
 
-MACHINE_START(HUAWEI_U8800, "HUAWEI U8800")
+MACHINE_START(HUAWEI_U8860, "HUAWEI U8860")
 	.atag_offset = 0x100,
 	.map_io = msm7x30_map_io,
 	.reserve = msm7x30_reserve,

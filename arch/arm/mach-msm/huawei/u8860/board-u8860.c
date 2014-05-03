@@ -83,6 +83,14 @@
 #include <linux/input/lsm303dlh.h>
 #include <sound/tpa2028d.h>
 
+/* u8860 begin */
+#ifdef CONFIG_HUAWEI_FEATURE_AT42QT_TS
+#include <linux/atmel_i2c_rmi.h>
+#endif
+
+#include <linux/hardware_self_adapt.h>
+
+/* u8860 end */
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MSM_FB_PRIM_BUF_SIZE	(800 * 480 * 4 * 3) /* 4bpp * 3 Pages */
@@ -125,6 +133,26 @@ static struct platform_device ion_dev;
 #define PMIC_GPIO_FLASH_PWM	23 /* PMIC GPIO Number 24 */
 #define PMIC_GPIO_LCD_PWM	24 /* PMIC GPIO Number 25 */
 #define PMIC_GPIO_SDC4_PWR_EN_N	35 /* PMIC GPIO Number 36 */
+
+/* u8860 begin */
+
+#include <linux/touch_platform_config.h>
+
+//static char buf_virtualkey[500];
+//static ssize_t  buf_vkey_size=0;
+
+atomic_t touch_detected_yet = ATOMIC_INIT(0); 
+#define MSM_7x30_TOUCH_INT       148
+#define MSM_7x30_RESET_PIN         85
+/* updated for regulator interface */
+struct regulator *vreg_gp4 = NULL;
+
+#ifdef CONFIG_HUAWEI_FEATURE_AT42QT_TS
+#define VCC_TS2V8 "gp4"
+#define VCC_TS1V8 "gp7"
+#endif
+
+/* u8860 end */
 
 #define DDR2_BANK_BASE 0X40000000
 unsigned long ebi1_phys_offset = DDR2_BANK_BASE;
@@ -1801,6 +1829,150 @@ static struct audio_amp_platform_data tpa2028d_platform_data =  {
 };
 #endif
 
+#ifdef CONFIG_HUAWEI_FEATURE_RMI_TOUCH
+int power_switch(int pm)
+{
+    int rc_gp4 = 0;
+    int value = IC_PM_VDD;
+	if (IC_PM_ON == pm)
+	{
+        vreg_gp4 = regulator_get(NULL,"gp4");
+        if (IS_ERR(vreg_gp4)) 
+        {
+		    pr_err("%s:gp4 power init get failed\n", __func__);
+            goto err_power_fail;
+        }
+        rc_gp4=regulator_set_voltage(vreg_gp4, value,value);
+        if(rc_gp4)
+        {
+            pr_err("%s:gp4 power init faild\n",__func__);
+            goto err_power_fail;
+        }
+        rc_gp4=regulator_enable(vreg_gp4);
+        if (rc_gp4) 
+        {
+		    pr_err("%s:gp4 power init failed \n", __func__);
+	    }
+        
+        mdelay(50);     
+  
+	}
+	else if(IC_PM_OFF == pm)
+	{
+		if(NULL != vreg_gp4)
+		{
+           rc_gp4 = regulator_disable(vreg_gp4);
+           if (rc_gp4)
+           {
+               pr_err("%s:gp4 power disable failed \n", __func__);
+           }
+        }
+	}
+	else 
+    {
+       	rc_gp4 = -EPERM;
+       	pr_err("%s:gp4 power switch not support yet!\n", __func__);	
+    }
+err_power_fail:
+	return rc_gp4;
+}
+
+/*
+ *use the touch_gpio_config_interrupt to config the gpio
+ *which we used, but the gpio number can't exposure to user
+ *so when the platform or the product changged please self self adapt
+ */
+ 
+int touch_gpio_config_interrupt(void)
+{
+	int gpio_config = 0;
+    int ret = 0;
+    gpio_config = GPIO_CFG(MSM_7x30_TOUCH_INT, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA);
+    ret = gpio_tlmm_config(gpio_config, GPIO_CFG_ENABLE);
+    return ret;    
+}
+/*
+ *the fucntion set_touch_probe_flag when the probe is detected use this function can set the flag ture
+ */
+
+void set_touch_probe_flag(int detected)/*we use this to detect the probe is detected*/
+{
+    if(detected >= 0)
+    {
+    	atomic_set(&touch_detected_yet, 1);
+    }
+    else
+    {
+    	atomic_set(&touch_detected_yet, 0);
+    }
+    return;
+}
+
+/*
+ *the fucntion read_touch_probe_flag when the probe is ready to detect first we read the flag 
+ *if the flag is set ture we will break the probe else we 
+ *will run the probe fucntion
+ */
+
+int read_touch_probe_flag(void)
+{
+    int ret = 0;
+    ret = atomic_read(&touch_detected_yet);
+    return ret;
+}
+
+/*this function reset touch panel */
+int touch_reset(void)
+{
+    int ret = 0;
+
+	gpio_request(MSM_7x30_RESET_PIN,"TOUCH_RESET");
+	ret = gpio_tlmm_config(GPIO_CFG(MSM_7x30_RESET_PIN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	ret = gpio_direction_output(MSM_7x30_RESET_PIN, 1);
+	mdelay(5);
+	ret = gpio_direction_output(MSM_7x30_RESET_PIN, 0);
+	mdelay(10);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+	ret = gpio_direction_output(MSM_7x30_RESET_PIN, 1);
+	mdelay(50);//must more than 10ms.
+
+	return ret;
+}
+
+/*this function return reset gpio at 7x30 platform */
+int get_touch_reset_pin(void)
+{
+	int ret = MSM_7x30_RESET_PIN;
+	return ret;
+}
+
+/*this function get the tp  resolution*/
+static int get_phone_version(struct tp_resolution_conversion *tp_resolution_type)
+{
+        tp_resolution_type->lcd_x = LCD_X_FWVGA;
+        tp_resolution_type->lcd_y = LCD_Y_FWVGA;   
+        tp_resolution_type->lcd_all = LCD_ALL_FWVGA;
+
+    return 1;
+}
+
+static struct touch_hw_platform_data touch_hw_data = {
+    .touch_power = power_switch,
+    .touch_gpio_config_interrupt = touch_gpio_config_interrupt,
+    .set_touch_probe_flag = set_touch_probe_flag,
+    .read_touch_probe_flag = read_touch_probe_flag,
+    .touch_reset = touch_reset,
+    .get_touch_reset_pin = get_touch_reset_pin,
+    .get_phone_version = get_phone_version,
+};
+/*
+static struct i2c_board_info synaptics_rmi_1564_ts = {
+	I2C_BOARD_INFO("Synaptics_rmi", 0x70),   // actual address 0x24, use fake address 0x70
+	.platform_data = &touch_hw_data,
+	.irq = MSM_GPIO_TO_INT(MSM_7x30_TOUCH_INT),
+	.flags = true, //this flags is the switch of the muti_touch 
+};*/
+#endif
+
 static struct i2c_board_info msm_i2c_board_info[] = {
 	#ifdef CONFIG_APS_12D
 	{
@@ -1822,8 +1994,22 @@ static struct i2c_board_info msm_i2c_board_info[] = {
 	{
 		I2C_BOARD_INFO("tpa2028d_amp", 0xB0 >> 1),
 		.platform_data = &tpa2028d_platform_data,
-	}
+	},
 	#endif
+#ifdef CONFIG_HUAWEI_FEATURE_RMI_TOUCH
+	{   
+		I2C_BOARD_INFO("Synaptics_rmi", 0x70),   // actual address 0x24, use fake address 0x70
+		.platform_data = &touch_hw_data,
+		.irq = MSM_GPIO_TO_INT(MSM_7x30_TOUCH_INT),
+		.flags = true, //this flags is the switch of the muti_touch 
+	},
+#endif
+#ifdef CONFIG_HUAWEI_FEATURE_AT42QT_TS
+	{   
+		I2C_BOARD_INFO("atmel-rmi-ts", 0x4a),  
+		.irq = MSM_GPIO_TO_INT(ATMEL_RMI_TS_IRQ),
+	},
+#endif
 };
 
 static struct i2c_board_info msm_marimba_board_info[] = {
@@ -3396,227 +3582,6 @@ static struct msm_spm_platform_data msm_spm_data __initdata = {
 
 	.vctl_timeout_us = 50,
 };
-
-#if defined(CONFIG_INPUT_TOUCHSCREEN)
-#define TS_GPIO_IRQ	148
-#define TS_GPIO_RESET	85
-
-#define MAX_LEN		100
-
-static ssize_t u8800_virtual_keys_register(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf)
-{
-	char *virtual_keys =
-		__stringify(EV_KEY) ":" __stringify(KEY_BACK)
-			":67:862:60:50\n"
-		__stringify(EV_KEY) ":" __stringify(KEY_MENU)
-			":199:862:60:50\n"
-		__stringify(EV_KEY) ":" __stringify(KEY_HOMEPAGE)
-			":304:862:60:50\n"
-		__stringify(EV_KEY) ":" __stringify(KEY_SEARCH)
-			":413:862:60:50\n";
-
-	return snprintf(buf, strnlen(virtual_keys, MAX_LEN) + 1 , "%s",
-		virtual_keys);
-}
-
-static struct kobj_attribute atmel_mxt_ts_virtual_keys_attr = {
-	.attr = {
-		.name = "virtualkeys.atmel_mxt_ts",
-		.mode = S_IRUGO,
-	},
-	.show = &u8800_virtual_keys_register,
-};
-
-static struct kobj_attribute synaptics_rmi4_ts_virtual_keys_attr = {
-	.attr = {
-		.name = "virtualkeys.synaptics_rmi4_i2c",
-		.mode = S_IRUGO,
-	},
-	.show = &u8800_virtual_keys_register,
-};
-
-static struct attribute *virtual_key_properties_attrs[] = {
-	&atmel_mxt_ts_virtual_keys_attr.attr,
-	&synaptics_rmi4_ts_virtual_keys_attr.attr,
-	NULL
-};
-
-static struct attribute_group virtual_key_properties_attr_group = {
-	.attrs = virtual_key_properties_attrs,
-};
-
-static int virtual_key_setup(void)
-{
-	int ret = 0;
-	static struct kobject *virtual_key_properties_kobj;
-
-	/* Already registered. */
-	if (virtual_key_properties_kobj)
-		return ret;
-
-	virtual_key_properties_kobj =
-		kobject_create_and_add("board_properties", NULL);
-
-	if (virtual_key_properties_kobj)
-		ret = sysfs_create_group(virtual_key_properties_kobj,
-			&virtual_key_properties_attr_group);
-	if (!virtual_key_properties_kobj || ret)
-		pr_err("%s: failed to create u8800 board_properties\n", __func__);
-
-	return ret;
-}
-
-#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
-static const u8 mxt224_config_data[] = {
-	/* T6 Object */
-	 0, 0, 0, 0, 0, 0,
-	/* T38 Object */
-	 0, 0, 0, 15, 12, 11, 0, 0,
-	/* T7 Object */
-	 50, 15, 25,
-	/* T8 Object */
-	 10, 0, 20, 10, 0, 0, 5, 15,
-	/* T9 Object */
-	 139, 0, 0, 17, 12, 0, 17, 50, 2, 1,
-	 0, 3, 1, 0, 10, 10, 10, 10, 113, 3,
-	 223, 1, 35, 33, 52, 51, 148, 10, 139, 30,
-	 0,
-	/* T15 Object */
-	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	 0,
-	/* T18 Object */
-	 0, 0,
-	/* T19 Object */
-	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	 0, 0, 0, 0, 0, 0,
-	/* T20 Object */
-	 0, 0, 0, 0, 0, 0, 0, 80, 40, 4,
-	 35, 10,
-	/* T22 Object */
-	 15, 0, 0, 0, 0, 0, 0, 0, 16, 0,
-	 1, 0, 7, 18, 25, 30, 0,
-	/* T23 Object */
-	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	 0, 0, 0, 0, 0,
-	/* T24 Object */
-	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	/* T25 Object */
-	 3, 0, 200, 50, 64, 31, 0, 0, 0, 0,
-	 0, 0, 0, 0,
-	/* T27 Object */
-	 0, 0, 0, 0, 0, 0, 0,
-	/* T28 Object */
-	 0, 0, 1, 4, 8, 60,
-};
-
-static struct mxt_config_info mxt_config_array[] = {
-	{
-		.config		= mxt224_config_data,
-		.config_length	= ARRAY_SIZE(mxt224_config_data),
-		.family_id	= 0x80,
-		.variant_id	= 0x01,
-		.version	= 0x16,
-		.build		= 0xAB,
-	},
-};
-
-int mxt_init_hw(bool on)
-{
-	/* Stub */
-	return 0;
-}
-
-int mxt_power_on(bool on)
-{
-	/* Stub */
-	return 0;
-}
-
-int mxt_lpm_on(bool on)
-{
-	/* Stub */
-	return 0;
-}
-
-static struct mxt_platform_data mxt_platform_data = {
-	.config_array		= mxt_config_array,
-	.config_array_size	= ARRAY_SIZE(mxt_config_array),
-	.panel_minx		= 0,
-	.panel_maxx		= 480,
-	.panel_miny		= 0,
-	.panel_maxy		= 882,
-	.disp_minx		= 0,
-	.disp_maxx		= 480,
-	.disp_miny		= 0,
-	.disp_maxy		= 800,
-	.irqflags		= IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-	.reset_gpio		= TS_GPIO_RESET,
-	.irq_gpio		= TS_GPIO_IRQ,
-	.init_hw		= mxt_init_hw,
-	.power_on		= mxt_power_on,
-	.lpm_on			= mxt_lpm_on,
-};
-
-static struct i2c_board_info atmel_mxt_ts = {
-	I2C_BOARD_INFO("atmel_mxt_ts", 0x4a),
-	.platform_data = &mxt_platform_data,
-	.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
-};
-#endif
-
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4
-static struct synaptics_rmi4_platform_data rmi4_platform_data = {
-	.regulator_en		= false,
-	.i2c_pull_up		= false,
-	.irq_gpio		= TS_GPIO_IRQ,
-	.irq_flags		= IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-	.reset_gpio		= TS_GPIO_RESET,
-	.panel_x		= 480,
-	.panel_y		= 882,
-	.disp_x			= 480,
-	.disp_y			= 800,
-	.fw_image_name		= NULL,
-	.capacitance_button_map = NULL,
-};
-
-static struct i2c_board_info synaptics_rmi4_ts = {
-	I2C_BOARD_INFO("synaptics_rmi4_i2c", 0x70),
-	.platform_data = &rmi4_platform_data,
-	.irq = MSM_GPIO_TO_INT(TS_GPIO_IRQ),
-};
-#endif
-
-static int __init i2c_touch_init(void)
-{
-	int ret;
-	struct i2c_adapter *touch_i2c_adapter;
-	union i2c_smbus_data data;
-
-	touch_i2c_adapter = i2c_get_adapter(0);
-
-	ret = i2c_smbus_xfer(touch_i2c_adapter, 0x4a, 0, I2C_SMBUS_READ, 0x00,
-		I2C_SMBUS_BYTE_DATA, &data);
-
-	if (!ret) {
-		pr_debug("%s: Found Atmel mXT224\n", __func__);
-#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
-		i2c_new_device(touch_i2c_adapter, &atmel_mxt_ts);
-#endif
-	} else {
-		pr_debug("%s: Found Synaptics\n", __func__);
-#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4
-		i2c_new_device(touch_i2c_adapter, &synaptics_rmi4_ts);
-#endif
-	}
-
-	virtual_key_setup();
-
-	return 0;
-}
-device_initcall(i2c_touch_init);
-#endif /* CONFIG_INPUT_TOUCHSCREEN */
 
 static uint32_t hwid_gpio_table[] = {
 	/* CAMIF_ID */

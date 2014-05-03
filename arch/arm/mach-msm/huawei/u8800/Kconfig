@@ -1,0 +1,7 @@
+config MACH_U8800
+	depends on ARCH_MSM7X30
+	depends on !MSM_STACKED_MEMORY
+	select MACH_HUAWEI
+	bool "HUAWEI U8800"
+	help
+		Support for the Huawei U8800 board.

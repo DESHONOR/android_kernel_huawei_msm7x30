@@ -1,0 +1,2 @@
+source "arch/arm/mach-msm/huawei/u8860/Kconfig"
+source "arch/arm/mach-msm/huawei/u8800/Kconfig"

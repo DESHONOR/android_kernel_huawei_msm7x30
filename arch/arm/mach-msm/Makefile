@@ -101,7 +101,7 @@ ifndef CONFIG_ARCH_MSM8960
 ifndef CONFIG_ARCH_MSM8X60
 ifndef CONFIG_ARCH_MSM8974
 	obj-$(CONFIG_MSM_SMD) += pmic.o
-ifdef CONFIG_MACH_HUAWEI_U8800
+ifdef CONFIG_MACH_HUAWEI
 	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_pmapp.o
 else
 	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_hsusb.o rpc_pmapp.o rpc_fsusb.o
@@ -116,8 +116,10 @@ ifndef CONFIG_ARCH_MSM8X60
 ifndef CONFIG_ARCH_APQ8064
 ifndef CONFIG_ARCH_MSM8974
 ifndef CONFIG_ARCH_MSM9625
-ifndef CONFIG_MACH_HUAWEI_U8800
+ifndef CONFIG_MACH_U8800
+ifndef CONFIG_MACH_U8860
 	obj-y += nand_partitions.o
+endif
 endif
 endif
 endif
@@ -266,10 +268,7 @@ obj-$(CONFIG_MACH_MSM8X55_SURF) += board-msm7x30.o devices-msm7x30.o gpiomux-7x3
 obj-$(CONFIG_MACH_MSM8X55_FFA) += board-msm7x30.o devices-msm7x30.o gpiomux-7x30.o
 obj-$(CONFIG_MACH_MSM8X55_SVLTE_FFA) += board-msm7x30.o devices-msm7x30.o gpiomux-7x30.o
 obj-$(CONFIG_MACH_MSM8X55_SVLTE_SURF) += board-msm7x30.o devices-msm7x30.o gpiomux-7x30.o
-obj-$(CONFIG_MACH_HUAWEI_U8800) += board-u8800.o devices-u8800.o board-u8800-gpiomux.o board-u8800-battery.o
-ifndef CONFIG_MSM_BT_POWER
-obj-$(CONFIG_MACH_HUAWEI_U8800) += board-u8800-rfkill.o
-endif
+
 obj-$(CONFIG_ARCH_MSM7X30) += memory_topology.o clock-local.o clock-7x30.o acpuclock-7x30.o clock-pll.o
 obj-$(CONFIG_MACH_MSM7X25_SURF) += board-msm7x27.o devices-msm7x25.o
 obj-$(CONFIG_MACH_MSM7X25_FFA) += board-msm7x27.o devices-msm7x25.o
@@ -313,6 +312,7 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-mmc.o board-sapphire-wifi.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
 
 obj-$(CONFIG_MACH_LGE) += lge/
+obj-$(CONFIG_MACH_HUAWEI) += huawei/
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 CFLAGS_board-9615.o += -Idrivers/usb/gadget
@@ -385,7 +385,6 @@ obj-$(CONFIG_MACH_MSM8X55_SURF) += board-msm7x30-regulator.o
 obj-$(CONFIG_MACH_MSM8X55_FFA) += board-msm7x30-regulator.o
 obj-$(CONFIG_MACH_MSM8X55_SVLTE_FFA) += board-msm7x30-regulator.o
 obj-$(CONFIG_MACH_MSM8X55_SVLTE_SURF) += board-msm7x30-regulator.o
-obj-$(CONFIG_MACH_HUAWEI_U8800) += board-u8800-regulator.o
 obj-$(CONFIG_ARCH_MSM7X27A) += board-msm7x27a-regulator.o
 endif
 

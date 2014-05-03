@@ -681,15 +681,6 @@ config MACH_MSM7X30_FLUID
        help
          Support for the Qualcomm MSM7x30 FLUID eval board.
 
-config MACH_HUAWEI_U8800
-       depends on ARCH_MSM7X30
-       depends on !MSM_STACKED_MEMORY
-       default y
-	select HUAWEI_KERNEL
-       bool "HUAWEI U8800"
-       help
-         Support for the Huawei U8800 board.
-
 config MACH_SAPPHIRE
 	depends on ARCH_MSM7X01A
 	default n
@@ -937,10 +928,8 @@ config MACH_MSM_DUMMY
 
 endmenu
 
-config HUAWEI_KERNEL
-	bool
-
 source "arch/arm/mach-msm/lge/Kconfig"
+source "arch/arm/mach-msm/huawei/Kconfig"
 
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"

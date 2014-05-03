@@ -1,0 +1,2 @@
+obj-$(CONFIG_MACH_U8860) += u8860/
+obj-$(CONFIG_MACH_U8800) += u8800/

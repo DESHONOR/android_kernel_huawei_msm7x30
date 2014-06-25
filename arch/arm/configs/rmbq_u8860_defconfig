@@ -1604,6 +1604,7 @@ CONFIG_I2C_DEBUG_BUS=y
 # CONFIG_SPMI is not set
 # CONFIG_SLIMBUS is not set
 # CONFIG_HSI is not set
+CONFIG_HUAWEI_FEATURE_GYROSCOPE_L3G4200DH=yv
 
 #
 # Miscellaneous I2C Chip support

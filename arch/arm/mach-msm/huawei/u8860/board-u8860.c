@@ -1963,7 +1963,7 @@ static int get_phone_version(struct tp_resolution_conversion *tp_resolution_type
 {
         tp_resolution_type->lcd_x = LCD_X_FWVGA;
         tp_resolution_type->lcd_y = LCD_Y_FWVGA;   
-        tp_resolution_type->lcd_all = LCD_ALL_WVGA_4INCHTP;
+        tp_resolution_type->lcd_all = LCD_ALL_FWVGA;
 
     return 1;
 }
